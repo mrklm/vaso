@@ -19,7 +19,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.2.1"
+APP_VERSION = "0.2.2"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -271,16 +271,46 @@ def build_params_from_ui(
     return params
 
 
+def build_preview_params(params: VaseParameters) -> VaseParameters:
+    preview_params = VaseParameters(
+        height_mm=params.height_mm,
+        wall_thickness_mm=params.wall_thickness_mm,
+        bottom_thickness_mm=params.bottom_thickness_mm,
+        radial_samples=min(params.radial_samples, 40),
+        vertical_samples=min(params.vertical_samples, 48),
+        open_top=params.open_top,
+        close_bottom=params.close_bottom,
+        profiles=[
+            Profile(
+                z_ratio=p.z_ratio,
+                diameter=p.diameter,
+                sides=p.sides,
+                rotation_deg=p.rotation_deg,
+                scale_x=p.scale_x,
+                scale_y=p.scale_y,
+                offset_x=p.offset_x,
+                offset_y=p.offset_y,
+            )
+            for p in params.profiles
+        ],
+    )
+    return preview_params
+
+
+
 def apply_theme(
     root: tk.Tk,
     style: ttk.Style,
     theme_name: str,
-    figure: Figure,
+    figure_side: Figure,
+    figure_top: Figure,
     ax_side,
     ax_top,
-    canvas: FigureCanvasTkAgg,
+    canvas_side: FigureCanvasTkAgg,
+    canvas_top: FigureCanvasTkAgg,
     help_text_widget: scrolledtext.ScrolledText,
 ) -> None:
+
     colors = THEMES[theme_name]
 
     bg = colors["BG"]
@@ -378,7 +408,8 @@ def apply_theme(
         foreground=[("selected", bg)],
     )
 
-    figure.patch.set_facecolor(panel)
+    figure_side.patch.set_facecolor(panel)
+    figure_top.patch.set_facecolor(panel)
 
     for ax in (ax_side, ax_top):
         ax.set_facecolor(field)
@@ -398,26 +429,25 @@ def apply_theme(
         selectforeground=bg,
     )
 
-    canvas.draw_idle()
+    canvas_side.draw_idle()
+    canvas_top.draw_idle()
 
 def apply_theme_to_3d_axes(ax_3d, theme_name: str) -> None:
     colors = THEMES[theme_name]
 
-    panel = colors["PANEL"]
     field = colors["FIELD"]
     fg = colors["FG"]
     accent = colors["ACCENT"]
 
     ax_3d.set_facecolor(field)
-    ax_3d.set_title("Aperçu 3D", color=accent)
+    ax_3d.set_title("Aperçu 3D", color=accent, fontsize=11, pad=10)
 
-    ax_3d.set_xlabel("X (mm)", color=fg)
-    ax_3d.set_ylabel("Y (mm)", color=fg)
-    ax_3d.set_zlabel("Z (mm)", color=fg)
+    ax_3d.set_xlabel("X", color=fg, fontsize=9, labelpad=6)
+    ax_3d.set_ylabel("Y", color=fg, fontsize=9, labelpad=6)
+    ax_3d.set_zlabel("Z", color=fg, fontsize=9, labelpad=6)
 
-    ax_3d.tick_params(colors=fg)
+    ax_3d.tick_params(colors=fg, labelsize=8, pad=1)
 
-    # Fond des panneaux 3D
     try:
         ax_3d.xaxis.pane.set_facecolor(field)
         ax_3d.yaxis.pane.set_facecolor(field)
@@ -429,7 +459,6 @@ def apply_theme_to_3d_axes(ax_3d, theme_name: str) -> None:
     except Exception:
         pass
 
-    # Couleur des axes
     try:
         ax_3d.xaxis.line.set_color(accent)
         ax_3d.yaxis.line.set_color(accent)
@@ -437,7 +466,11 @@ def apply_theme_to_3d_axes(ax_3d, theme_name: str) -> None:
     except Exception:
         pass
 
-    ax_3d.grid(True, color=accent, alpha=0.25)
+    ax_3d.grid(False)
+
+    ax_3d.set_xticks([])
+    ax_3d.set_yticks([])
+    ax_3d.set_zticks([])
 
 
 def main() -> None:
@@ -510,8 +543,8 @@ def main() -> None:
     general_tab.columnconfigure(1, weight=1)
     general_tab.columnconfigure(2, weight=0)
 
-    general_tab.rowconfigure(0, weight=4)
-    general_tab.rowconfigure(1, weight=2)
+    general_tab.rowconfigure(0, weight=1)
+    general_tab.rowconfigure(1, weight=1)
     general_tab.rowconfigure(2, weight=0)
 
     general_frame = ttk.LabelFrame(
@@ -520,23 +553,7 @@ def main() -> None:
         padding=12,
         style="Vaso.TLabelframe",
     )
-    general_frame.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, 12), pady=(0, 12))
-
-    preview_3d_frame = ttk.LabelFrame(
-        general_tab,
-        text="Aperçu 3D",
-        padding=12,
-        style="Vaso.TLabelframe",
-    )
-    preview_3d_frame.grid(row=0, column=1, sticky="nsew", padx=(0, 12), pady=(0, 12))
-
-    preview_2d_frame = ttk.LabelFrame(
-        general_tab,
-        text="Aperçu 2D",
-        padding=12,
-        style="Vaso.TLabelframe",
-    )
-    preview_2d_frame.grid(row=1, column=1, sticky="nsew", padx=(0, 12), pady=(0, 12))
+    general_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 12), pady=(0, 12))
 
     shape_frame = ttk.LabelFrame(
         general_tab,
@@ -544,7 +561,32 @@ def main() -> None:
         padding=12,
         style="Vaso.TLabelframe",
     )
-    shape_frame.grid(row=0, column=2, rowspan=2, sticky="nsew", pady=(0, 12))
+    shape_frame.grid(row=1, column=0, sticky="nsew", padx=(0, 12), pady=(0, 12))
+
+    preview_3d_frame = ttk.LabelFrame(
+        general_tab,
+        text="Aperçu 3D",
+        padding=12,
+        style="Vaso.TLabelframe",
+    )
+    preview_3d_frame.grid(row=0, column=1, rowspan=2, sticky="nsew", padx=(0, 12), pady=(0, 12))
+
+    side_preview_frame = ttk.LabelFrame(
+        general_tab,
+        text="Silhouette",
+        padding=12,
+        style="Vaso.TLabelframe",
+    )
+    side_preview_frame.grid(row=0, column=2, sticky="nsew", pady=(0, 12))
+
+    top_preview_frame = ttk.LabelFrame(
+        general_tab,
+        text="Vue du haut",
+        padding=12,
+        style="Vaso.TLabelframe",
+    )
+    top_preview_frame.grid(row=1, column=2, sticky="nsew", pady=(0, 12))
+
 
 
     ttk.Label(general_frame, text="Hauteur (mm)", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", pady=4)
@@ -599,30 +641,35 @@ def main() -> None:
 
     ttk.Label(
         shape_frame,
-        text="50 = milieu exact, 40 = plus bas, 60 = plus haut",
+        text="50 = milieu ; 40 = plus bas ; 60 = plus haut",
         style="Vaso.TLabel",
     ).grid(row=9, column=0, columnspan=2, sticky="w", pady=4)
 
 
+
     shape_frame.columnconfigure(1, weight=1)
 
-    figure_3d = Figure(figsize=(7.2, 5.8), dpi=100)
+    figure_3d = Figure(figsize=(6.8, 6.2), dpi=100)
     ax_3d = figure_3d.add_subplot(111, projection="3d")
     canvas_3d = FigureCanvasTkAgg(figure_3d, master=preview_3d_frame)
     canvas_3d_widget = canvas_3d.get_tk_widget()
     canvas_3d_widget.pack(fill="both", expand=True)
 
-    figure = Figure(figsize=(7.2, 2.8), dpi=100)
-    ax_side = figure.add_subplot(121)
-    ax_top = figure.add_subplot(122)
-    figure.tight_layout(pad=2.0)
+    figure_side = Figure(figsize=(4.0, 3.0), dpi=100)
+    ax_side = figure_side.add_subplot(111)
+    canvas_side = FigureCanvasTkAgg(figure_side, master=side_preview_frame)
+    canvas_side_widget = canvas_side.get_tk_widget()
+    canvas_side_widget.pack(fill="both", expand=True)
 
-    canvas = FigureCanvasTkAgg(figure, master=preview_2d_frame)
-    canvas_widget = canvas.get_tk_widget()
-    canvas_widget.pack(fill="both", expand=True)
+    figure_top = Figure(figsize=(4.0, 3.0), dpi=100)
+    ax_top = figure_top.add_subplot(111)
+    canvas_top = FigureCanvasTkAgg(figure_top, master=top_preview_frame)
+    canvas_top_widget = canvas_top.get_tk_widget()
+    canvas_top_widget.pack(fill="both", expand=True)
 
     buttons_frame = ttk.Frame(general_tab, style="Vaso.TFrame")
     buttons_frame.grid(row=2, column=0, columnspan=3, sticky="w", pady=(0, 8))
+
 
 
     # Options
@@ -718,9 +765,11 @@ def main() -> None:
     help_text.configure(state="disabled")
 
     def draw_preview(params: VaseParameters) -> None:
-        z_values, radius_values = generate_outer_profile_points(params, samples_z=240)
+        preview_params = build_preview_params(params)
+
+        z_values, radius_values = generate_outer_profile_points(params, samples_z=180)
         top_contour = generate_top_outer_contour(params)
-        vertices, faces = generate_vase_mesh(params)
+        vertices, faces = generate_vase_mesh(preview_params)
 
         if len(top_contour) >= 2:
             top_contour_closed = np.vstack([top_contour, top_contour[0]])
@@ -733,32 +782,45 @@ def main() -> None:
         ax_top.clear()
         ax_3d.clear()
 
-        # --- Aperçu 2D
-        ax_side.plot(-radius_values, z_values)
-        ax_side.plot(radius_values, z_values)
-        ax_side.fill_betweenx(z_values, -radius_values, radius_values, alpha=0.15)
-        ax_side.set_title("Silhouette")
-        ax_side.set_xlabel("Largeur (mm)")
-        ax_side.set_ylabel("Hauteur (mm)")
+        # --- Silhouette
+        ax_side.plot(-radius_values, z_values, linewidth=1.4)
+        ax_side.plot(radius_values, z_values, linewidth=1.4)
+        ax_side.fill_betweenx(z_values, -radius_values, radius_values, alpha=0.12)
+
+        ax_side.set_title("Silhouette", fontsize=11, pad=8)
+        ax_side.set_xlabel("Largeur (mm)", fontsize=9)
+        ax_side.set_ylabel("Hauteur (mm)", fontsize=9)
         ax_side.set_aspect("equal", adjustable="box")
 
-        ax_top.plot(top_contour_closed[:, 0], top_contour_closed[:, 1])
-        ax_top.fill(top_contour_closed[:, 0], top_contour_closed[:, 1], alpha=0.15)
-        ax_top.set_title("Vue du haut")
-        ax_top.set_xlabel("X (mm)")
-        ax_top.set_ylabel("Y (mm)")
+        ax_side.locator_params(axis="x", nbins=5)
+        ax_side.locator_params(axis="y", nbins=6)
+        ax_side.tick_params(labelsize=8)
+
+        # --- Vue du haut
+        ax_top.plot(top_contour_closed[:, 0], top_contour_closed[:, 1], linewidth=1.4)
+        ax_top.fill(top_contour_closed[:, 0], top_contour_closed[:, 1], alpha=0.12)
+
+        ax_top.set_title("Vue du haut", fontsize=11, pad=8)
+        ax_top.set_xlabel("X (mm)", fontsize=9)
+        ax_top.set_ylabel("Y (mm)", fontsize=9)
         ax_top.set_aspect("equal", adjustable="box")
 
-        # --- Aperçu 3D
+        ax_top.locator_params(axis="x", nbins=5)
+        ax_top.locator_params(axis="y", nbins=5)
+        ax_top.tick_params(labelsize=8)
+
+        # --- Aperçu 3D allégé
         triangles = vertices[faces]
         mesh = Poly3DCollection(
             triangles,
-            linewidths=0.20,
-            edgecolors=colors["ACCENT"],
-            alpha=0.85,
+            linewidths=0.08,
+            edgecolors=colors["PANEL"],
+            alpha=0.95,
         )
-        mesh.set_facecolor(colors["FIELD"])
+
+        mesh.set_facecolor(colors["ACCENT"])
         ax_3d.add_collection3d(mesh)
+
 
         x_min = float(vertices[:, 0].min())
         x_max = float(vertices[:, 0].max())
@@ -779,9 +841,11 @@ def main() -> None:
         if half_range <= 0:
             half_range = 1.0
 
-        ax_3d.set_xlim(x_center - half_range, x_center + half_range)
-        ax_3d.set_ylim(y_center - half_range, y_center + half_range)
-        ax_3d.set_zlim(z_center - half_range, z_center + half_range)
+        padding = half_range * 0.08
+
+        ax_3d.set_xlim(x_center - half_range - padding, x_center + half_range + padding)
+        ax_3d.set_ylim(y_center - half_range - padding, y_center + half_range + padding)
+        ax_3d.set_zlim(z_center - half_range - padding, z_center + half_range + padding)
 
         try:
             ax_3d.set_box_aspect((
@@ -792,27 +856,32 @@ def main() -> None:
         except Exception:
             pass
 
-        ax_3d.view_init(elev=22, azim=35)
+        ax_3d.view_init(elev=20, azim=32)
 
         apply_theme(
             root=root,
             style=style,
             theme_name=theme_var.get(),
-            figure=figure,
+            figure_side=figure_side,
+            figure_top=figure_top,
             ax_side=ax_side,
             ax_top=ax_top,
-            canvas=canvas,
+            canvas_side=canvas_side,
+            canvas_top=canvas_top,
             help_text_widget=help_text,
         )
 
         figure_3d.patch.set_facecolor(colors["PANEL"])
         apply_theme_to_3d_axes(ax_3d, theme_var.get())
 
-        figure.tight_layout(pad=2.0)
-        figure_3d.tight_layout(pad=1.2)
+        figure_side.tight_layout(pad=1.0)
+        figure_top.tight_layout(pad=1.0)
+        figure_3d.tight_layout(pad=0.8)
 
-        canvas.draw()
+        canvas_side.draw()
+        canvas_top.draw()
         canvas_3d.draw()
+
 
 
     def read_seed() -> int | None:
@@ -833,8 +902,9 @@ def main() -> None:
         wall = round(rng.uniform(2.0, 3.6), 1)
         bottom = round(rng.uniform(max(wall, 2.5), 6.0), 1)
 
-        radial = rng.choice([72, 96, 120, 144])
-        vertical = rng.choice([90, 120, 150, 180])
+        radial = rng.choice([48, 72, 96])
+        vertical = rng.choice([72, 96, 120])
+
         profile_count = rng.randint(3, 10)
 
         d_bottom = rng.randint(25, 70)
@@ -952,12 +1022,15 @@ def main() -> None:
                 root=root,
                 style=style,
                 theme_name=theme_var.get(),
-                figure=figure,
+                figure_side=figure_side,
+                figure_top=figure_top,
                 ax_side=ax_side,
                 ax_top=ax_top,
-                canvas=canvas,
+                canvas_side=canvas_side,
+                canvas_top=canvas_top,
                 help_text_widget=help_text,
             )
+
             params = build_current_params()
             draw_preview(params)
         except Exception as exc:
@@ -1000,12 +1073,15 @@ def main() -> None:
         root=root,
         style=style,
         theme_name=theme_var.get(),
-        figure=figure,
+        figure_side=figure_side,
+        figure_top=figure_top,
         ax_side=ax_side,
         ax_top=ax_top,
-        canvas=canvas,
+        canvas_side=canvas_side,
+        canvas_top=canvas_top,
         help_text_widget=help_text,
     )
+
 
     try:
         draw_preview(build_current_params())

@@ -7,6 +7,12 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [0.2.2] — 2026-03-14
+
+### Modifié
+
+ - Simplification des rendu 2D et 3D
+ - Changement du placement des fenêtres
 
 ## [0.2.1] — 2026-03-14
 
