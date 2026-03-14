@@ -6,6 +6,15 @@ Le format s'inspire de **Keep a Changelog**
 https://keepachangelog.com/fr/1.0.0/
 
 
+
+## [0.1.4] — 2026-03-14
+
+### Modifié
+
+ - Combobox Thème déplacée dans option
+ - plus de thème aleatoire, mainteant garde en memoire deriner thème 
+
+
 ## [0.1.3] — 2026-03-14
 
 ### Modifié

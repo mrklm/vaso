@@ -1,5 +1,6 @@
 from pathlib import Path
 from datetime import datetime
+import json
 import random
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, scrolledtext
@@ -15,8 +16,9 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.1.3"
+APP_VERSION = "0.1.4"
 APP_NAME = "Vaso"
+SETTINGS_FILE = "vaso_settings.json"
 
 
 THEMES = {
@@ -88,6 +90,35 @@ THEMES = {
         FG="#5A2E0C", FIELD_FG="#5A2E0C", ACCENT="#8B3A1A"
     ),
 }
+
+
+def get_settings_path(base_dir: Path) -> Path:
+    return base_dir / SETTINGS_FILE
+
+
+def load_saved_theme(base_dir: Path) -> str | None:
+    settings_path = get_settings_path(base_dir)
+    if not settings_path.exists():
+        return None
+
+    try:
+        data = json.loads(settings_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+    theme_name = data.get("theme")
+    if isinstance(theme_name, str) and theme_name in THEMES:
+        return theme_name
+    return None
+
+
+def save_selected_theme(base_dir: Path, theme_name: str) -> None:
+    settings_path = get_settings_path(base_dir)
+    payload = {"theme": theme_name}
+    settings_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
 
 
 def get_desktop_dir() -> Path:
@@ -330,7 +361,8 @@ def main() -> None:
     main_frame.pack(fill="both", expand=True)
 
     theme_names = list(THEMES.keys())
-    startup_theme = random.choice(theme_names)
+    saved_theme = load_saved_theme(base_dir)
+    startup_theme = saved_theme if saved_theme is not None else random.choice(theme_names)
     theme_var = tk.StringVar(value=startup_theme)
 
     status_var = tk.StringVar(value="Prêt.")
@@ -354,38 +386,11 @@ def main() -> None:
     rot_middle_var = tk.StringVar(value="15")
     rot_top_var = tk.StringVar(value="30")
 
-    # ---------------------------
-    # Barre haute
-    # ---------------------------
-    top_bar = ttk.Frame(main_frame, style="Vaso.TFrame")
-    top_bar.grid(row=0, column=0, sticky="ew", pady=(0, 12))
-    top_bar.columnconfigure(0, weight=1)
-
-    theme_label = ttk.Label(
-        top_bar,
-        text="Thème",
-        style="Vaso.TLabel",
-    )
-    theme_label.grid(row=0, column=1, sticky="e", padx=(0, 8))
-
-    theme_combo = ttk.Combobox(
-        top_bar,
-        textvariable=theme_var,
-        values=theme_names,
-        state="readonly",
-        width=32,
-        style="Vaso.TCombobox",
-    )
-    theme_combo.grid(row=0, column=2, sticky="e")
-
-    # ---------------------------
-    # Notebook
-    # ---------------------------
     notebook = ttk.Notebook(main_frame, style="Vaso.TNotebook")
-    notebook.grid(row=1, column=0, sticky="nsew")
+    notebook.grid(row=0, column=0, sticky="nsew")
 
     main_frame.columnconfigure(0, weight=1)
-    main_frame.rowconfigure(1, weight=1)
+    main_frame.rowconfigure(0, weight=1)
 
     general_tab = ttk.Frame(notebook, style="Vaso.TFrame")
     options_tab = ttk.Frame(notebook, style="Vaso.TFrame")
@@ -395,9 +400,7 @@ def main() -> None:
     notebook.add(options_tab, text="Options")
     notebook.add(help_tab, text="Aide")
 
-    # ---------------------------
-    # Onglet Général
-    # ---------------------------
+    # Général
     general_tab.columnconfigure(0, weight=0)
     general_tab.columnconfigure(1, weight=0)
     general_tab.columnconfigure(2, weight=1)
@@ -428,7 +431,6 @@ def main() -> None:
     )
     preview_frame.grid(row=0, column=2, sticky="nsew", pady=(0, 12))
 
-    # Paramètres généraux
     ttk.Label(general_frame, text="Hauteur (mm)", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", pady=4)
     ttk.Entry(general_frame, textvariable=height_var, width=12, style="Vaso.TEntry").grid(row=0, column=1, sticky="ew", pady=4)
 
@@ -449,7 +451,6 @@ def main() -> None:
 
     general_frame.columnconfigure(1, weight=1)
 
-    # Forme du vase
     ttk.Label(shape_frame, text="Diamètre bas (mm)", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", pady=4)
     ttk.Entry(shape_frame, textvariable=d_bottom_var, width=12, style="Vaso.TEntry").grid(row=0, column=1, sticky="ew", pady=4)
 
@@ -476,7 +477,6 @@ def main() -> None:
 
     shape_frame.columnconfigure(1, weight=1)
 
-    # Aperçu matplotlib
     figure = Figure(figsize=(6.0, 5.4), dpi=100)
     ax_side = figure.add_subplot(121)
     ax_top = figure.add_subplot(122)
@@ -486,15 +486,42 @@ def main() -> None:
     canvas_widget = canvas.get_tk_widget()
     canvas_widget.pack(fill="both", expand=True)
 
-    # Boutons dans Général
     buttons_frame = ttk.Frame(general_tab, style="Vaso.TFrame")
     buttons_frame.grid(row=1, column=0, columnspan=3, sticky="w", pady=(0, 8))
 
-    # ---------------------------
-    # Onglet Options
-    # ---------------------------
+    # Options
     options_tab.columnconfigure(0, weight=1)
-    options_tab.rowconfigure(0, weight=1)
+    options_tab.rowconfigure(0, weight=0)
+    options_tab.rowconfigure(1, weight=1)
+
+    theme_frame = ttk.LabelFrame(
+        options_tab,
+        text="Thème",
+        padding=12,
+        style="Vaso.TLabelframe",
+    )
+    theme_frame.grid(row=0, column=0, sticky="nw", padx=(0, 0), pady=(0, 12))
+
+    ttk.Label(theme_frame, text="Thème actif", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", pady=4)
+
+    theme_combo = ttk.Combobox(
+        theme_frame,
+        textvariable=theme_var,
+        values=theme_names,
+        state="readonly",
+        width=36,
+        style="Vaso.TCombobox",
+    )
+    theme_combo.grid(row=1, column=0, sticky="ew", pady=(0, 4))
+
+    ttk.Label(
+        theme_frame,
+        text="Le dernier thème sélectionné est mémorisé.",
+        style="Vaso.TLabel",
+        justify="left",
+    ).grid(row=2, column=0, sticky="w", pady=(4, 0))
+
+    theme_frame.columnconfigure(0, weight=1)
 
     export_frame = ttk.LabelFrame(
         options_tab,
@@ -502,7 +529,7 @@ def main() -> None:
         padding=12,
         style="Vaso.TLabelframe",
     )
-    export_frame.grid(row=0, column=0, sticky="nw", padx=0, pady=0)
+    export_frame.grid(row=1, column=0, sticky="nw", padx=(0, 0), pady=(0, 0))
 
     ttk.Label(export_frame, text="Dossier d’export STL", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", pady=4)
     ttk.Entry(export_frame, textvariable=export_path_var, width=48, style="Vaso.TEntry").grid(row=1, column=0, sticky="ew", pady=(0, 8))
@@ -539,9 +566,7 @@ def main() -> None:
 
     export_frame.columnconfigure(0, weight=1)
 
-    # ---------------------------
-    # Onglet Aide
-    # ---------------------------
+    # Aide
     help_tab.columnconfigure(0, weight=1)
     help_tab.rowconfigure(0, weight=1)
 
@@ -556,9 +581,6 @@ def main() -> None:
     help_text.insert("1.0", load_help_text(base_dir))
     help_text.configure(state="disabled")
 
-    # ---------------------------
-    # Fonctions
-    # ---------------------------
     def draw_preview(params: VaseParameters) -> None:
         z_values, radius_values = generate_outer_profile_points(params, samples_z=240)
         top_contour = generate_top_outer_contour(params)
@@ -714,6 +736,7 @@ def main() -> None:
 
     def on_theme_change(event=None) -> None:
         try:
+            save_selected_theme(base_dir, theme_var.get())
             apply_theme(
                 root=root,
                 style=style,
@@ -726,7 +749,6 @@ def main() -> None:
             )
             params = build_current_params()
             draw_preview(params)
-            status_var.set(f"Thème appliqué : {theme_var.get()}")
         except Exception as exc:
             status_var.set("Erreur pendant l’application du thème.")
             messagebox.showerror(APP_NAME, f"Erreur pendant l’application du thème :\n{exc}")
@@ -754,15 +776,12 @@ def main() -> None:
         style="Vaso.TButton",
     ).pack(side="left")
 
-    # ---------------------------
-    # Barre de statut
-    # ---------------------------
     status_label = ttk.Label(
         main_frame,
         textvariable=status_var,
         style="Vaso.TLabel",
     )
-    status_label.grid(row=2, column=0, sticky="w", pady=(8, 0))
+    status_label.grid(row=1, column=0, sticky="w", pady=(8, 0))
 
     apply_theme(
         root=root,

@@ -342,9 +342,3 @@ def generate_top_outer_contour(params: VaseParameters) -> np.ndarray:
     _validate_params(params)
     return _interpolated_outer_contour(params, params.height_mm)
     
-
-
-    vertices = np.asarray(vertices, dtype=float)
-    faces = np.asarray(faces, dtype=int)
-
-    return vertices, faces
