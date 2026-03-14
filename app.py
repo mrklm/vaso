@@ -19,7 +19,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.2.0"
+APP_VERSION = "0.2.1"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -507,10 +507,12 @@ def main() -> None:
 
     # Général
     general_tab.columnconfigure(0, weight=0)
-    general_tab.columnconfigure(1, weight=0)
-    general_tab.columnconfigure(2, weight=1)
-    general_tab.rowconfigure(0, weight=1)
-    general_tab.rowconfigure(1, weight=0)
+    general_tab.columnconfigure(1, weight=1)
+    general_tab.columnconfigure(2, weight=0)
+
+    general_tab.rowconfigure(0, weight=4)
+    general_tab.rowconfigure(1, weight=2)
+    general_tab.rowconfigure(2, weight=0)
 
     general_frame = ttk.LabelFrame(
         general_tab,
@@ -518,7 +520,23 @@ def main() -> None:
         padding=12,
         style="Vaso.TLabelframe",
     )
-    general_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 12), pady=(0, 12))
+    general_frame.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, 12), pady=(0, 12))
+
+    preview_3d_frame = ttk.LabelFrame(
+        general_tab,
+        text="Aperçu 3D",
+        padding=12,
+        style="Vaso.TLabelframe",
+    )
+    preview_3d_frame.grid(row=0, column=1, sticky="nsew", padx=(0, 12), pady=(0, 12))
+
+    preview_2d_frame = ttk.LabelFrame(
+        general_tab,
+        text="Aperçu 2D",
+        padding=12,
+        style="Vaso.TLabelframe",
+    )
+    preview_2d_frame.grid(row=1, column=1, sticky="nsew", padx=(0, 12), pady=(0, 12))
 
     shape_frame = ttk.LabelFrame(
         general_tab,
@@ -526,15 +544,8 @@ def main() -> None:
         padding=12,
         style="Vaso.TLabelframe",
     )
-    shape_frame.grid(row=0, column=1, sticky="nsew", padx=(0, 12), pady=(0, 12))
+    shape_frame.grid(row=0, column=2, rowspan=2, sticky="nsew", pady=(0, 12))
 
-    preview_frame = ttk.LabelFrame(
-        general_tab,
-        text="Aperçu 2D",
-        padding=12,
-        style="Vaso.TLabelframe",
-    )
-    preview_frame.grid(row=0, column=2, sticky="nsew", pady=(0, 12))
 
     ttk.Label(general_frame, text="Hauteur (mm)", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", pady=4)
     ttk.Entry(general_frame, textvariable=height_var, width=12, style="Vaso.TEntry").grid(row=0, column=1, sticky="ew", pady=4)
@@ -595,17 +606,24 @@ def main() -> None:
 
     shape_frame.columnconfigure(1, weight=1)
 
-    figure = Figure(figsize=(6.0, 5.4), dpi=100)
+    figure_3d = Figure(figsize=(7.2, 5.8), dpi=100)
+    ax_3d = figure_3d.add_subplot(111, projection="3d")
+    canvas_3d = FigureCanvasTkAgg(figure_3d, master=preview_3d_frame)
+    canvas_3d_widget = canvas_3d.get_tk_widget()
+    canvas_3d_widget.pack(fill="both", expand=True)
+
+    figure = Figure(figsize=(7.2, 2.8), dpi=100)
     ax_side = figure.add_subplot(121)
     ax_top = figure.add_subplot(122)
     figure.tight_layout(pad=2.0)
 
-    canvas = FigureCanvasTkAgg(figure, master=preview_frame)
+    canvas = FigureCanvasTkAgg(figure, master=preview_2d_frame)
     canvas_widget = canvas.get_tk_widget()
     canvas_widget.pack(fill="both", expand=True)
 
     buttons_frame = ttk.Frame(general_tab, style="Vaso.TFrame")
-    buttons_frame.grid(row=1, column=0, columnspan=3, sticky="w", pady=(0, 8))
+    buttons_frame.grid(row=2, column=0, columnspan=3, sticky="w", pady=(0, 8))
+
 
     # Options
     options_tab.columnconfigure(0, weight=1)
@@ -702,15 +720,20 @@ def main() -> None:
     def draw_preview(params: VaseParameters) -> None:
         z_values, radius_values = generate_outer_profile_points(params, samples_z=240)
         top_contour = generate_top_outer_contour(params)
+        vertices, faces = generate_vase_mesh(params)
 
         if len(top_contour) >= 2:
             top_contour_closed = np.vstack([top_contour, top_contour[0]])
         else:
             top_contour_closed = top_contour
 
+        colors = THEMES[theme_var.get()]
+
         ax_side.clear()
         ax_top.clear()
+        ax_3d.clear()
 
+        # --- Aperçu 2D
         ax_side.plot(-radius_values, z_values)
         ax_side.plot(radius_values, z_values)
         ax_side.fill_betweenx(z_values, -radius_values, radius_values, alpha=0.15)
@@ -726,43 +749,11 @@ def main() -> None:
         ax_top.set_ylabel("Y (mm)")
         ax_top.set_aspect("equal", adjustable="box")
 
-        apply_theme(
-            root=root,
-            style=style,
-            theme_name=theme_var.get(),
-            figure=figure,
-            ax_side=ax_side,
-            ax_top=ax_top,
-            canvas=canvas,
-            help_text_widget=help_text,
-        )
-
-        figure.tight_layout(pad=2.0)
-        canvas.draw()
-
-    def show_3d_preview(params: VaseParameters) -> None:
-        vertices, faces = generate_vase_mesh(params)
-
-        preview_3d_window = tk.Toplevel(root)
-        preview_3d_window.title(f"{APP_NAME} v{APP_VERSION} — Aperçu 3D")
-        preview_3d_window.geometry("900x700")
-        preview_3d_window.minsize(700, 520)
-
-        colors = THEMES[theme_var.get()]
-        preview_3d_window.configure(bg=colors["BG"])
-
-        frame_3d = ttk.Frame(preview_3d_window, padding=12, style="Vaso.TFrame")
-        frame_3d.pack(fill="both", expand=True)
-
-        figure_3d = Figure(figsize=(7.4, 6.2), dpi=100)
-        figure_3d.patch.set_facecolor(colors["PANEL"])
-
-        ax_3d = figure_3d.add_subplot(111, projection="3d")
-
+        # --- Aperçu 3D
         triangles = vertices[faces]
         mesh = Poly3DCollection(
             triangles,
-            linewidths=0.25,
+            linewidths=0.20,
             edgecolors=colors["ACCENT"],
             alpha=0.85,
         )
@@ -792,25 +783,36 @@ def main() -> None:
         ax_3d.set_ylim(y_center - half_range, y_center + half_range)
         ax_3d.set_zlim(z_center - half_range, z_center + half_range)
 
+        try:
+            ax_3d.set_box_aspect((
+                max(x_size, 1.0),
+                max(y_size, 1.0),
+                max(z_size, 1.0),
+            ))
+        except Exception:
+            pass
+
         ax_3d.view_init(elev=22, azim=35)
+
+        apply_theme(
+            root=root,
+            style=style,
+            theme_name=theme_var.get(),
+            figure=figure,
+            ax_side=ax_side,
+            ax_top=ax_top,
+            canvas=canvas,
+            help_text_widget=help_text,
+        )
+
+        figure_3d.patch.set_facecolor(colors["PANEL"])
         apply_theme_to_3d_axes(ax_3d, theme_var.get())
 
-        canvas_3d = FigureCanvasTkAgg(figure_3d, master=frame_3d)
-        canvas_3d_widget = canvas_3d.get_tk_widget()
-        canvas_3d_widget.pack(fill="both", expand=True)
+        figure.tight_layout(pad=2.0)
+        figure_3d.tight_layout(pad=1.2)
 
-        toolbar_hint = ttk.Label(
-            frame_3d,
-            text="Astuce : clic gauche = rotation, molette = zoom, clic droit = déplacement selon le backend Matplotlib.",
-            style="Vaso.TLabel",
-            justify="left",
-        )
-        toolbar_hint.pack(anchor="w", pady=(8, 0))
-        
-
-        figure_3d.tight_layout(pad=1.6)
+        canvas.draw()
         canvas_3d.draw()
-         
 
 
     def read_seed() -> int | None:
@@ -894,7 +896,7 @@ def main() -> None:
         try:
             params = build_current_params()
             draw_preview(params)
-            status_var.set("Aperçu mis à jour.")
+            status_var.set("Aperçu 2D/3D mis à jour.")
         except ValueError as exc:
             status_var.set("Paramètres invalides.")
             messagebox.showerror(APP_NAME, f"Paramètres invalides :\n{exc}")
@@ -902,17 +904,6 @@ def main() -> None:
             status_var.set("Erreur pendant l’aperçu.")
             messagebox.showerror(APP_NAME, f"Erreur pendant la mise à jour de l’aperçu :\n{exc}")
 
-    def on_preview_3d_click() -> None:
-        try:
-            params = build_current_params()
-            show_3d_preview(params)
-            status_var.set("Aperçu 3D ouvert.")
-        except ValueError as exc:
-            status_var.set("Paramètres invalides.")
-            messagebox.showerror(APP_NAME, f"Paramètres invalides :\n{exc}")
-        except Exception as exc:
-            status_var.set("Erreur pendant l’aperçu 3D.")
-            messagebox.showerror(APP_NAME, f"Erreur pendant l’ouverture de l’aperçu 3D :\n{exc}")
 
 
     def on_random_click() -> None:
@@ -954,10 +945,6 @@ def main() -> None:
             messagebox.showerror(APP_NAME, f"Erreur pendant la génération du STL :\n{exc}")
 
 
-        except Exception as exc:
-            status_var.set("Erreur pendant la génération.")
-            messagebox.showerror(APP_NAME, f"Erreur pendant la génération du STL :\n{exc}")
-
     def on_theme_change(event=None) -> None:
         try:
             save_selected_theme(base_dir, theme_var.get())
@@ -988,13 +975,6 @@ def main() -> None:
 
     ttk.Button(
         buttons_frame,
-        text="Aperçu 3D",
-        command=on_preview_3d_click,
-        style="Vaso.TButton",
-    ).pack(side="left", padx=(0, 8))
-
-    ttk.Button(
-        buttons_frame,
         text="Aléatoire",
         command=on_random_click,
         style="Vaso.TButton",
@@ -1006,6 +986,7 @@ def main() -> None:
         command=on_generate_click,
         style="Vaso.TButton",
     ).pack(side="left")
+
 
 
     status_label = ttk.Label(

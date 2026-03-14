@@ -7,6 +7,13 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+
+## [0.2.1] — 2026-03-14
+
+### Modifié
+
+ - Rendu 3D sur la fenetre principale, au milieu, 2D en dessous
+
 ## [0.2.0] — 2026-03-14
 
 ### Ajouté
