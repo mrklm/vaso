@@ -7,6 +7,13 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [0.1.9] — 2026-03-14
+
+### Modifié
+
+ - Affichage du N° de version dans la barre de titre
+
+
 ## [0.1.8] — 2026-03-14
 
 ### Modifié

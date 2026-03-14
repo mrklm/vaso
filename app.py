@@ -18,7 +18,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.1.8"
+APP_VERSION = "0.1.9"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -402,7 +402,7 @@ def apply_theme(
 
 def main() -> None:
     root = tk.Tk()
-    root.title(APP_NAME)
+    root.title(f"{APP_NAME} v{APP_VERSION}")
     root.geometry("1280x760")
     root.minsize(1160, 700)
 
