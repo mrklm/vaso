@@ -16,7 +16,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.1.6"
+APP_VERSION = "0.1.7"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -177,33 +177,32 @@ def _build_dynamic_profiles_from_anchors(
     s_top: int,
     rot_middle: float,
     rot_top: float,
-    offset_x_middle: float,
-    offset_y_middle: float,
+    middle_z_ratio: float,
 ) -> list[Profile]:
     if profile_count < 3 or profile_count > 10:
         raise ValueError("Le nombre de profils doit être compris entre 3 et 10.")
+
+    if not (0.1 < middle_z_ratio < 0.9):
+        raise ValueError("La hauteur du profil central doit être comprise entre 10 et 90 %.")
 
     profiles: list[Profile] = []
 
     for i in range(profile_count):
         z_ratio = i / (profile_count - 1)
 
-        if z_ratio <= 0.5:
-            local_t = z_ratio / 0.5 if 0.5 > 0 else 0.0
+        if z_ratio <= middle_z_ratio:
+            local_t = z_ratio / middle_z_ratio if middle_z_ratio > 0 else 0.0
 
             diameter = _interp_float(d_bottom, d_middle, local_t)
             sides = _interp_int(s_bottom, s_middle, local_t)
             rotation_deg = _interp_float(0.0, rot_middle, local_t)
-            offset_x = _interp_float(0.0, offset_x_middle, local_t)
-            offset_y = _interp_float(0.0, offset_y_middle, local_t)
         else:
-            local_t = (z_ratio - 0.5) / 0.5
+            upper_span = 1.0 - middle_z_ratio
+            local_t = (z_ratio - middle_z_ratio) / upper_span if upper_span > 0 else 0.0
 
             diameter = _interp_float(d_middle, d_top, local_t)
             sides = _interp_int(s_middle, s_top, local_t)
             rotation_deg = _interp_float(rot_middle, rot_top, local_t)
-            offset_x = _interp_float(offset_x_middle, 0.0, local_t)
-            offset_y = _interp_float(offset_y_middle, 0.0, local_t)
 
         profiles.append(
             Profile(
@@ -211,8 +210,8 @@ def _build_dynamic_profiles_from_anchors(
                 diameter=diameter,
                 sides=max(3, sides),
                 rotation_deg=rotation_deg,
-                offset_x=offset_x,
-                offset_y=offset_y,
+                offset_x=0.0,
+                offset_y=0.0,
             )
         )
 
@@ -234,9 +233,10 @@ def build_params_from_ui(
     s_top_var: tk.StringVar,
     rot_middle_var: tk.StringVar,
     rot_top_var: tk.StringVar,
-    offset_x_middle_var: tk.StringVar,
-    offset_y_middle_var: tk.StringVar,
+    middle_height_ratio_var: tk.StringVar,
 ) -> VaseParameters:
+
+
     params = VaseParameters(
         height_mm=float(height_var.get()),
         wall_thickness_mm=float(wall_var.get()),
@@ -261,9 +261,9 @@ def build_params_from_ui(
         s_top=int(s_top_var.get()),
         rot_middle=float(rot_middle_var.get()),
         rot_top=float(rot_top_var.get()),
-        offset_x_middle=float(offset_x_middle_var.get()),
-        offset_y_middle=float(offset_y_middle_var.get()),
+        middle_z_ratio=float(middle_height_ratio_var.get()) / 100.0,
     )
+
 
     return params
 
@@ -446,8 +446,8 @@ def main() -> None:
 
     rot_middle_var = tk.StringVar(value="15")
     rot_top_var = tk.StringVar(value="30")
-    offset_x_middle_var = tk.StringVar(value="0")
-    offset_y_middle_var = tk.StringVar(value="0")
+    middle_height_ratio_var = tk.StringVar(value="50")
+
 
     notebook = ttk.Notebook(main_frame, style="Vaso.TNotebook")
     notebook.grid(row=0, column=0, sticky="nsew")
@@ -541,11 +541,15 @@ def main() -> None:
     ttk.Label(shape_frame, text="Rotation haut (°)", style="Vaso.TLabel").grid(row=7, column=0, sticky="w", pady=4)
     ttk.Entry(shape_frame, textvariable=rot_top_var, width=12, style="Vaso.TEntry").grid(row=7, column=1, sticky="ew", pady=4)
 
-    ttk.Label(shape_frame, text="Décalage X milieu (mm)", style="Vaso.TLabel").grid(row=8, column=0, sticky="w", pady=4)
-    ttk.Entry(shape_frame, textvariable=offset_x_middle_var, width=12, style="Vaso.TEntry").grid(row=8, column=1, sticky="ew", pady=4)
+    ttk.Label(shape_frame, text="Hauteur profil central (%)", style="Vaso.TLabel").grid(row=8, column=0, sticky="w", pady=4)
+    ttk.Entry(shape_frame, textvariable=middle_height_ratio_var, width=12, style="Vaso.TEntry").grid(row=8, column=1, sticky="ew", pady=4)
 
-    ttk.Label(shape_frame, text="Décalage Y milieu (mm)", style="Vaso.TLabel").grid(row=9, column=0, sticky="w", pady=4)
-    ttk.Entry(shape_frame, textvariable=offset_y_middle_var, width=12, style="Vaso.TEntry").grid(row=9, column=1, sticky="ew", pady=4)
+    ttk.Label(
+        shape_frame,
+        text="50 = milieu exact, 40 = plus bas, 60 = plus haut",
+        style="Vaso.TLabel",
+    ).grid(row=9, column=0, columnspan=2, sticky="w", pady=4)
+
 
     shape_frame.columnconfigure(1, weight=1)
 
@@ -722,9 +726,8 @@ def main() -> None:
         rot_middle = rng.randint(0, 45)
         rot_top = rng.randint(0, 90)
 
-        max_offset = max(5.0, d_middle * 0.18)
-        offset_x_middle = round(rng.uniform(-max_offset, max_offset), 1)
-        offset_y_middle = round(rng.uniform(-max_offset, max_offset), 1)
+        middle_height_ratio = rng.randint(38, 62)
+
 
         height_var.set(str(height))
         wall_var.set(f"{wall:.1f}")
@@ -743,8 +746,8 @@ def main() -> None:
 
         rot_middle_var.set(str(rot_middle))
         rot_top_var.set(str(rot_top))
-        offset_x_middle_var.set(f"{offset_x_middle:.1f}")
-        offset_y_middle_var.set(f"{offset_y_middle:.1f}")
+        middle_height_ratio_var.set(str(middle_height_ratio))
+
 
 
     def build_current_params() -> VaseParameters:
@@ -763,9 +766,9 @@ def main() -> None:
             s_top_var=s_top_var,
             rot_middle_var=rot_middle_var,
             rot_top_var=rot_top_var,
-            offset_x_middle_var=offset_x_middle_var,
-            offset_y_middle_var=offset_y_middle_var,
+            middle_height_ratio_var=middle_height_ratio_var,
         )
+
 
     def on_preview_click() -> None:
         try:

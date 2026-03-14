@@ -7,6 +7,15 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+
+## [0.1.7] — 2026-03-14
+
+### Modifié
+
+ - Le Décalage du polygone centrale introduit dans la v0.1.5 etait par erreur
+   horizontale, il est maintenant verticale.
+
+
 ## [0.1.6] — 2026-03-14
 
 ### Ajouté
