@@ -10,6 +10,8 @@ class Profile:
     rotation_deg: float
     scale_x: float = 1.0
     scale_y: float = 1.0
+    offset_x: float = 0.0
+    offset_y: float = 0.0
 
 
 @dataclass

@@ -16,7 +16,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.1.4"
+APP_VERSION = "0.1.5"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -173,6 +173,8 @@ def build_params_from_ui(
     s_top_var: tk.StringVar,
     rot_middle_var: tk.StringVar,
     rot_top_var: tk.StringVar,
+    offset_x_middle_var: tk.StringVar,
+    offset_y_middle_var: tk.StringVar,
 ) -> VaseParameters:
     params = VaseParameters(
         height_mm=float(height_var.get()),
@@ -196,6 +198,8 @@ def build_params_from_ui(
             diameter=float(d_middle_var.get()),
             sides=int(s_middle_var.get()),
             rotation_deg=float(rot_middle_var.get()),
+            offset_x=float(offset_x_middle_var.get()),
+            offset_y=float(offset_y_middle_var.get()),
         ),
         Profile(
             z_ratio=1.0,
@@ -385,6 +389,8 @@ def main() -> None:
 
     rot_middle_var = tk.StringVar(value="15")
     rot_top_var = tk.StringVar(value="30")
+    offset_x_middle_var = tk.StringVar(value="0")
+    offset_y_middle_var = tk.StringVar(value="0")
 
     notebook = ttk.Notebook(main_frame, style="Vaso.TNotebook")
     notebook.grid(row=0, column=0, sticky="nsew")
@@ -474,6 +480,12 @@ def main() -> None:
 
     ttk.Label(shape_frame, text="Rotation haut (°)", style="Vaso.TLabel").grid(row=7, column=0, sticky="w", pady=4)
     ttk.Entry(shape_frame, textvariable=rot_top_var, width=12, style="Vaso.TEntry").grid(row=7, column=1, sticky="ew", pady=4)
+
+    ttk.Label(shape_frame, text="Décalage X milieu (mm)", style="Vaso.TLabel").grid(row=8, column=0, sticky="w", pady=4)
+    ttk.Entry(shape_frame, textvariable=offset_x_middle_var, width=12, style="Vaso.TEntry").grid(row=8, column=1, sticky="ew", pady=4)
+
+    ttk.Label(shape_frame, text="Décalage Y milieu (mm)", style="Vaso.TLabel").grid(row=9, column=0, sticky="w", pady=4)
+    ttk.Entry(shape_frame, textvariable=offset_y_middle_var, width=12, style="Vaso.TEntry").grid(row=9, column=1, sticky="ew", pady=4)
 
     shape_frame.columnconfigure(1, weight=1)
 
@@ -649,6 +661,10 @@ def main() -> None:
         rot_middle = rng.randint(0, 45)
         rot_top = rng.randint(0, 90)
 
+        max_offset = max(5.0, d_middle * 0.18)
+        offset_x_middle = round(rng.uniform(-max_offset, max_offset), 1)
+        offset_y_middle = round(rng.uniform(-max_offset, max_offset), 1)
+
         height_var.set(str(height))
         wall_var.set(f"{wall:.1f}")
         bottom_var.set(f"{bottom:.1f}")
@@ -662,6 +678,11 @@ def main() -> None:
         s_bottom_var.set(str(s_bottom))
         s_middle_var.set(str(s_middle))
         s_top_var.set(str(s_top))
+
+        rot_middle_var.set(str(rot_middle))
+        rot_top_var.set(str(rot_top))
+        offset_x_middle_var.set(f"{offset_x_middle:.1f}")
+        offset_y_middle_var.set(f"{offset_y_middle:.1f}")
 
         rot_middle_var.set(str(rot_middle))
         rot_top_var.set(str(rot_top))
@@ -681,6 +702,8 @@ def main() -> None:
             s_top_var=s_top_var,
             rot_middle_var=rot_middle_var,
             rot_top_var=rot_top_var,
+            offset_x_middle_var=offset_x_middle_var,
+            offset_y_middle_var=offset_y_middle_var,
         )
 
     def on_preview_click() -> None:

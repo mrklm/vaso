@@ -7,6 +7,13 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [0.1.5] — 2026-03-14
+
+### Modifié
+
+ - Polygone du milieu décalable
+
+
 ## [0.1.4] — 2026-03-14
 
 ### Modifié

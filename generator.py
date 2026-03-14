@@ -43,8 +43,8 @@ def _regular_polygon_vertices(profile: Profile) -> np.ndarray:
     rotation = np.radians(profile.rotation_deg)
 
     angles = np.linspace(0.0, 2.0 * np.pi, profile.sides, endpoint=False) + rotation
-    x = np.cos(angles) * radius * profile.scale_x
-    y = np.sin(angles) * radius * profile.scale_y
+    x = np.cos(angles) * radius * profile.scale_x + profile.offset_x
+    y = np.sin(angles) * radius * profile.scale_y + profile.offset_y
 
     return np.column_stack((x, y))
 
