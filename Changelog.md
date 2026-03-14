@@ -7,6 +7,13 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [0.1.6] — 2026-03-14
+
+### Ajouté
+
+ - Nombre de polygones possible: non plus 3 mais entre 3 et 10
+
+
 ## [0.1.5] — 2026-03-14
 
 ### Modifié

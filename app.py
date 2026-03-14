@@ -16,7 +16,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.1.5"
+APP_VERSION = "0.1.6"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -159,12 +159,73 @@ def load_help_text(base_dir: Path) -> str:
     )
 
 
+def _interp_float(a: float, b: float, t: float) -> float:
+    return (1.0 - t) * a + t * b
+
+
+def _interp_int(a: int, b: int, t: float) -> int:
+    return int(round((1.0 - t) * a + t * b))
+
+
+def _build_dynamic_profiles_from_anchors(
+    profile_count: int,
+    d_bottom: float,
+    d_middle: float,
+    d_top: float,
+    s_bottom: int,
+    s_middle: int,
+    s_top: int,
+    rot_middle: float,
+    rot_top: float,
+    offset_x_middle: float,
+    offset_y_middle: float,
+) -> list[Profile]:
+    if profile_count < 3 or profile_count > 10:
+        raise ValueError("Le nombre de profils doit être compris entre 3 et 10.")
+
+    profiles: list[Profile] = []
+
+    for i in range(profile_count):
+        z_ratio = i / (profile_count - 1)
+
+        if z_ratio <= 0.5:
+            local_t = z_ratio / 0.5 if 0.5 > 0 else 0.0
+
+            diameter = _interp_float(d_bottom, d_middle, local_t)
+            sides = _interp_int(s_bottom, s_middle, local_t)
+            rotation_deg = _interp_float(0.0, rot_middle, local_t)
+            offset_x = _interp_float(0.0, offset_x_middle, local_t)
+            offset_y = _interp_float(0.0, offset_y_middle, local_t)
+        else:
+            local_t = (z_ratio - 0.5) / 0.5
+
+            diameter = _interp_float(d_middle, d_top, local_t)
+            sides = _interp_int(s_middle, s_top, local_t)
+            rotation_deg = _interp_float(rot_middle, rot_top, local_t)
+            offset_x = _interp_float(offset_x_middle, 0.0, local_t)
+            offset_y = _interp_float(offset_y_middle, 0.0, local_t)
+
+        profiles.append(
+            Profile(
+                z_ratio=z_ratio,
+                diameter=diameter,
+                sides=max(3, sides),
+                rotation_deg=rotation_deg,
+                offset_x=offset_x,
+                offset_y=offset_y,
+            )
+        )
+
+    return profiles
+
+
 def build_params_from_ui(
     height_var: tk.StringVar,
     wall_var: tk.StringVar,
     bottom_var: tk.StringVar,
     radial_var: tk.StringVar,
     vertical_var: tk.StringVar,
+    profile_count_var: tk.StringVar,
     d_bottom_var: tk.StringVar,
     d_middle_var: tk.StringVar,
     d_top_var: tk.StringVar,
@@ -186,28 +247,23 @@ def build_params_from_ui(
         close_bottom=True,
     )
 
-    params.profiles = [
-        Profile(
-            z_ratio=0.0,
-            diameter=float(d_bottom_var.get()),
-            sides=int(s_bottom_var.get()),
-            rotation_deg=0.0,
-        ),
-        Profile(
-            z_ratio=0.5,
-            diameter=float(d_middle_var.get()),
-            sides=int(s_middle_var.get()),
-            rotation_deg=float(rot_middle_var.get()),
-            offset_x=float(offset_x_middle_var.get()),
-            offset_y=float(offset_y_middle_var.get()),
-        ),
-        Profile(
-            z_ratio=1.0,
-            diameter=float(d_top_var.get()),
-            sides=int(s_top_var.get()),
-            rotation_deg=float(rot_top_var.get()),
-        ),
-    ]
+    profile_count = int(profile_count_var.get())
+    if profile_count < 3 or profile_count > 10:
+        raise ValueError("Le nombre de profils doit être compris entre 3 et 10.")
+
+    params.profiles = _build_dynamic_profiles_from_anchors(
+        profile_count=profile_count,
+        d_bottom=float(d_bottom_var.get()),
+        d_middle=float(d_middle_var.get()),
+        d_top=float(d_top_var.get()),
+        s_bottom=int(s_bottom_var.get()),
+        s_middle=int(s_middle_var.get()),
+        s_top=int(s_top_var.get()),
+        rot_middle=float(rot_middle_var.get()),
+        rot_top=float(rot_top_var.get()),
+        offset_x_middle=float(offset_x_middle_var.get()),
+        offset_y_middle=float(offset_y_middle_var.get()),
+    )
 
     return params
 
@@ -378,6 +434,7 @@ def main() -> None:
     bottom_var = tk.StringVar(value="3.0")
     radial_var = tk.StringVar(value="96")
     vertical_var = tk.StringVar(value="120")
+    profile_count_var = tk.StringVar(value="3")
 
     d_bottom_var = tk.StringVar(value="40")
     d_middle_var = tk.StringVar(value="90")
@@ -452,8 +509,11 @@ def main() -> None:
     ttk.Label(general_frame, text="Résolution verticale", style="Vaso.TLabel").grid(row=4, column=0, sticky="w", pady=4)
     ttk.Entry(general_frame, textvariable=vertical_var, width=12, style="Vaso.TEntry").grid(row=4, column=1, sticky="ew", pady=4)
 
-    ttk.Label(general_frame, text="Seed", style="Vaso.TLabel").grid(row=5, column=0, sticky="w", pady=4)
-    ttk.Entry(general_frame, textvariable=seed_var, width=12, style="Vaso.TEntry").grid(row=5, column=1, sticky="ew", pady=4)
+    ttk.Label(general_frame, text="Nombre de profils (3-10)", style="Vaso.TLabel").grid(row=5, column=0, sticky="w", pady=4)
+    ttk.Entry(general_frame, textvariable=profile_count_var, width=12, style="Vaso.TEntry").grid(row=5, column=1, sticky="ew", pady=4)
+
+    ttk.Label(general_frame, text="Seed", style="Vaso.TLabel").grid(row=6, column=0, sticky="w", pady=4)
+    ttk.Entry(general_frame, textvariable=seed_var, width=12, style="Vaso.TEntry").grid(row=6, column=1, sticky="ew", pady=4)
 
     general_frame.columnconfigure(1, weight=1)
 
@@ -649,6 +709,7 @@ def main() -> None:
 
         radial = rng.choice([72, 96, 120, 144])
         vertical = rng.choice([90, 120, 150, 180])
+        profile_count = rng.randint(3, 10)
 
         d_bottom = rng.randint(25, 70)
         d_middle = rng.randint(max(d_bottom + 10, 45), 130)
@@ -670,6 +731,7 @@ def main() -> None:
         bottom_var.set(f"{bottom:.1f}")
         radial_var.set(str(radial))
         vertical_var.set(str(vertical))
+        profile_count_var.set(str(profile_count))
 
         d_bottom_var.set(str(d_bottom))
         d_middle_var.set(str(d_middle))
@@ -684,8 +746,6 @@ def main() -> None:
         offset_x_middle_var.set(f"{offset_x_middle:.1f}")
         offset_y_middle_var.set(f"{offset_y_middle:.1f}")
 
-        rot_middle_var.set(str(rot_middle))
-        rot_top_var.set(str(rot_top))
 
     def build_current_params() -> VaseParameters:
         return build_params_from_ui(
@@ -694,6 +754,7 @@ def main() -> None:
             bottom_var=bottom_var,
             radial_var=radial_var,
             vertical_var=vertical_var,
+            profile_count_var=profile_count_var,
             d_bottom_var=d_bottom_var,
             d_middle_var=d_middle_var,
             d_top_var=d_top_var,
