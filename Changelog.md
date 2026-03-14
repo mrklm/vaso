@@ -5,6 +5,15 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 Le format s'inspire de **Keep a Changelog**  
 https://keepachangelog.com/fr/1.0.0/
 
+
+
+## [0.1.2] — 2026-03-14
+
+### Ajouté
+
+ - Programme versionné, version affiché dans le titre
+ - Exports des fichiers STL dans un répértoire et numerotés
+
 ## [0.1.0] — 2026-03-13
 
 ### Ajouté
