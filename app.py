@@ -3,7 +3,9 @@ from datetime import datetime
 import json
 import random
 import tkinter as tk
+import numpy as np
 from tkinter import ttk, messagebox, filedialog, scrolledtext
+
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
@@ -16,7 +18,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.1.7"
+APP_VERSION = "0.1.8"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -661,6 +663,11 @@ def main() -> None:
         z_values, radius_values = generate_outer_profile_points(params, samples_z=240)
         top_contour = generate_top_outer_contour(params)
 
+        if len(top_contour) >= 2:
+            top_contour_closed = np.vstack([top_contour, top_contour[0]])
+        else:
+            top_contour_closed = top_contour
+
         ax_side.clear()
         ax_top.clear()
 
@@ -672,8 +679,8 @@ def main() -> None:
         ax_side.set_ylabel("Hauteur (mm)")
         ax_side.set_aspect("equal", adjustable="box")
 
-        ax_top.plot(top_contour[:, 0], top_contour[:, 1])
-        ax_top.fill(top_contour[:, 0], top_contour[:, 1], alpha=0.15)
+        ax_top.plot(top_contour_closed[:, 0], top_contour_closed[:, 1])
+        ax_top.fill(top_contour_closed[:, 0], top_contour_closed[:, 1], alpha=0.15)
         ax_top.set_title("Vue du haut")
         ax_top.set_xlabel("X (mm)")
         ax_top.set_ylabel("Y (mm)")
@@ -692,6 +699,7 @@ def main() -> None:
 
         figure.tight_layout(pad=2.0)
         canvas.draw()
+
 
     def read_seed() -> int | None:
         raw = seed_var.get().strip()
@@ -811,11 +819,15 @@ def main() -> None:
             export_stl(vertices, faces, output_path)
 
             status_var.set(f"STL généré : {output_path}")
-            messagebox.showinfo(APP_NAME, f"Fichier généré :\n{output_path}")
 
         except ValueError as exc:
             status_var.set("Paramètres invalides.")
             messagebox.showerror(APP_NAME, f"Paramètres invalides :\n{exc}")
+
+        except Exception as exc:
+            status_var.set("Erreur pendant la génération.")
+            messagebox.showerror(APP_NAME, f"Erreur pendant la génération du STL :\n{exc}")
+
 
         except Exception as exc:
             status_var.set("Erreur pendant la génération.")

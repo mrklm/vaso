@@ -7,6 +7,12 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [0.1.8] — 2026-03-14
+
+### Modifié
+
+ - Plus de popup de confirmation de génération de .STL
+ - Vue 2D améliorée: matplotlib ferme bien le polygone "vue de dessus"
 
 ## [0.1.7] — 2026-03-14
 
