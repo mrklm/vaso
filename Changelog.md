@@ -6,6 +6,12 @@ Le format s'inspire de **Keep a Changelog**
 https://keepachangelog.com/fr/1.0.0/
 
 
+## [0.1.3] — 2026-03-14
+
+### Modifié
+
+ - Découpage du programme en onglet: général/options/aide
+ - Suppression du titre et N° de version dans le fenetre programme
 
 ## [0.1.2] — 2026-03-14
 

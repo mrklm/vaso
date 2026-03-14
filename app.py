@@ -2,7 +2,7 @@ from pathlib import Path
 from datetime import datetime
 import random
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, messagebox, filedialog, scrolledtext
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
@@ -14,8 +14,9 @@ from generator import (
     generate_top_outer_contour,
 )
 from exporter import export_stl
-APP_VERSION = "0.1.2"
-APP_NAME = f"Vaso v{APP_VERSION}"
+
+APP_VERSION = "0.1.3"
+APP_NAME = "Vaso"
 
 
 THEMES = {
@@ -113,6 +114,20 @@ def get_next_export_path(export_dir: Path) -> Path:
         index += 1
 
 
+def load_help_text(base_dir: Path) -> str:
+    help_path = base_dir / "assets" / "aide.md"
+    if help_path.exists():
+        try:
+            return help_path.read_text(encoding="utf-8")
+        except Exception as exc:
+            return f"Impossible de lire le fichier d'aide :\n{exc}"
+    return (
+        "Fichier d'aide introuvable.\n\n"
+        "Créez le fichier : assets/aide.md\n"
+        "pour afficher l'aide dans cet onglet."
+    )
+
+
 def build_params_from_ui(
     height_var: tk.StringVar,
     wall_var: tk.StringVar,
@@ -170,6 +185,7 @@ def apply_theme(
     ax_side,
     ax_top,
     canvas: FigureCanvasTkAgg,
+    help_text_widget: scrolledtext.ScrolledText,
 ) -> None:
     colors = THEMES[theme_name]
 
@@ -190,13 +206,6 @@ def apply_theme(
         "Vaso.TLabel",
         background=bg,
         foreground=fg,
-    )
-
-    style.configure(
-        "Vaso.Title.TLabel",
-        background=bg,
-        foreground=accent,
-        font=("Segoe UI", 20, "bold"),
     )
 
     style.configure(
@@ -258,6 +267,23 @@ def apply_theme(
         foreground=[("active", bg), ("pressed", bg)],
     )
 
+    style.configure(
+        "Vaso.TNotebook",
+        background=bg,
+        borderwidth=0,
+    )
+    style.configure(
+        "Vaso.TNotebook.Tab",
+        background=panel,
+        foreground=fg,
+        padding=(12, 6),
+    )
+    style.map(
+        "Vaso.TNotebook.Tab",
+        background=[("selected", accent)],
+        foreground=[("selected", bg)],
+    )
+
     figure.patch.set_facecolor(panel)
 
     for ax in (ax_side, ax_top):
@@ -269,6 +295,14 @@ def apply_theme(
         ax.grid(True, color=accent, alpha=0.25)
         for spine in ax.spines.values():
             spine.set_color(accent)
+
+    help_text_widget.configure(
+        bg=field,
+        fg=field_fg,
+        insertbackground=field_fg,
+        selectbackground=accent,
+        selectforeground=bg,
+    )
 
     canvas.draw_idle()
 
@@ -299,41 +333,6 @@ def main() -> None:
     startup_theme = random.choice(theme_names)
     theme_var = tk.StringVar(value=startup_theme)
 
-    title_label = ttk.Label(
-        main_frame,
-        text=APP_NAME,
-        style="Vaso.Title.TLabel",
-    )
-    title_label.grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 8))
-
-    theme_label = ttk.Label(
-        main_frame,
-        text="Thème",
-        style="Vaso.TLabel",
-    )
-    theme_label.grid(row=0, column=3, sticky="e", padx=(0, 8), pady=(0, 8))
-
-    theme_combo = ttk.Combobox(
-        main_frame,
-        textvariable=theme_var,
-        values=theme_names,
-        state="readonly",
-        width=32,
-        style="Vaso.TCombobox",
-    )
-    theme_combo.grid(row=0, column=4, sticky="e", pady=(0, 8))
-
-    description_label = ttk.Label(
-        main_frame,
-        text=(
-            "Générateur de vases polygonaux.\n"
-            "Réglez les paramètres, utilisez le mode aléatoire si besoin, vérifiez l’aperçu, puis exportez le STL."
-        ),
-        justify="left",
-        style="Vaso.TLabel",
-    )
-    description_label.grid(row=1, column=0, columnspan=5, sticky="w", pady=(0, 16))
-
     status_var = tk.StringVar(value="Prêt.")
     export_path_var = tk.StringVar(value=str(get_default_export_dir()))
     seed_var = tk.StringVar(value="")
@@ -355,28 +354,81 @@ def main() -> None:
     rot_middle_var = tk.StringVar(value="15")
     rot_top_var = tk.StringVar(value="30")
 
-    general_frame = ttk.LabelFrame(main_frame, text="Paramètres généraux", padding=12, style="Vaso.TLabelframe")
-    general_frame.grid(row=2, column=0, sticky="nsew", padx=(0, 12), pady=(0, 12))
+    # ---------------------------
+    # Barre haute
+    # ---------------------------
+    top_bar = ttk.Frame(main_frame, style="Vaso.TFrame")
+    top_bar.grid(row=0, column=0, sticky="ew", pady=(0, 12))
+    top_bar.columnconfigure(0, weight=1)
 
-    shape_frame = ttk.LabelFrame(main_frame, text="Forme du vase", padding=12, style="Vaso.TLabelframe")
-    shape_frame.grid(row=2, column=1, sticky="nsew", padx=(0, 12), pady=(0, 12))
+    theme_label = ttk.Label(
+        top_bar,
+        text="Thème",
+        style="Vaso.TLabel",
+    )
+    theme_label.grid(row=0, column=1, sticky="e", padx=(0, 8))
 
-    export_frame = ttk.LabelFrame(main_frame, text="Export STL", padding=12, style="Vaso.TLabelframe")
-    export_frame.grid(row=2, column=2, sticky="nsew", padx=(0, 12), pady=(0, 12))
-
-    preview_frame = ttk.LabelFrame(main_frame, text="Aperçu 2D", padding=12, style="Vaso.TLabelframe")
-    preview_frame.grid(row=2, column=3, columnspan=2, sticky="nsew", pady=(0, 12))
-
-    main_frame.columnconfigure(0, weight=0)
-    main_frame.columnconfigure(1, weight=0)
-    main_frame.columnconfigure(2, weight=0)
-    main_frame.columnconfigure(3, weight=0)
-    main_frame.columnconfigure(4, weight=1)
-    main_frame.rowconfigure(2, weight=1)
+    theme_combo = ttk.Combobox(
+        top_bar,
+        textvariable=theme_var,
+        values=theme_names,
+        state="readonly",
+        width=32,
+        style="Vaso.TCombobox",
+    )
+    theme_combo.grid(row=0, column=2, sticky="e")
 
     # ---------------------------
+    # Notebook
+    # ---------------------------
+    notebook = ttk.Notebook(main_frame, style="Vaso.TNotebook")
+    notebook.grid(row=1, column=0, sticky="nsew")
+
+    main_frame.columnconfigure(0, weight=1)
+    main_frame.rowconfigure(1, weight=1)
+
+    general_tab = ttk.Frame(notebook, style="Vaso.TFrame")
+    options_tab = ttk.Frame(notebook, style="Vaso.TFrame")
+    help_tab = ttk.Frame(notebook, style="Vaso.TFrame")
+
+    notebook.add(general_tab, text="Général")
+    notebook.add(options_tab, text="Options")
+    notebook.add(help_tab, text="Aide")
+
+    # ---------------------------
+    # Onglet Général
+    # ---------------------------
+    general_tab.columnconfigure(0, weight=0)
+    general_tab.columnconfigure(1, weight=0)
+    general_tab.columnconfigure(2, weight=1)
+    general_tab.rowconfigure(0, weight=1)
+    general_tab.rowconfigure(1, weight=0)
+
+    general_frame = ttk.LabelFrame(
+        general_tab,
+        text="Paramètres généraux",
+        padding=12,
+        style="Vaso.TLabelframe",
+    )
+    general_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 12), pady=(0, 12))
+
+    shape_frame = ttk.LabelFrame(
+        general_tab,
+        text="Forme du vase",
+        padding=12,
+        style="Vaso.TLabelframe",
+    )
+    shape_frame.grid(row=0, column=1, sticky="nsew", padx=(0, 12), pady=(0, 12))
+
+    preview_frame = ttk.LabelFrame(
+        general_tab,
+        text="Aperçu 2D",
+        padding=12,
+        style="Vaso.TLabelframe",
+    )
+    preview_frame.grid(row=0, column=2, sticky="nsew", pady=(0, 12))
+
     # Paramètres généraux
-    # ---------------------------
     ttk.Label(general_frame, text="Hauteur (mm)", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", pady=4)
     ttk.Entry(general_frame, textvariable=height_var, width=12, style="Vaso.TEntry").grid(row=0, column=1, sticky="ew", pady=4)
 
@@ -397,9 +449,7 @@ def main() -> None:
 
     general_frame.columnconfigure(1, weight=1)
 
-    # ---------------------------
     # Forme du vase
-    # ---------------------------
     ttk.Label(shape_frame, text="Diamètre bas (mm)", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", pady=4)
     ttk.Entry(shape_frame, textvariable=d_bottom_var, width=12, style="Vaso.TEntry").grid(row=0, column=1, sticky="ew", pady=4)
 
@@ -426,11 +476,36 @@ def main() -> None:
 
     shape_frame.columnconfigure(1, weight=1)
 
+    # Aperçu matplotlib
+    figure = Figure(figsize=(6.0, 5.4), dpi=100)
+    ax_side = figure.add_subplot(121)
+    ax_top = figure.add_subplot(122)
+    figure.tight_layout(pad=2.0)
+
+    canvas = FigureCanvasTkAgg(figure, master=preview_frame)
+    canvas_widget = canvas.get_tk_widget()
+    canvas_widget.pack(fill="both", expand=True)
+
+    # Boutons dans Général
+    buttons_frame = ttk.Frame(general_tab, style="Vaso.TFrame")
+    buttons_frame.grid(row=1, column=0, columnspan=3, sticky="w", pady=(0, 8))
+
     # ---------------------------
-    # Export STL
+    # Onglet Options
     # ---------------------------
-    ttk.Label(export_frame, text="Dossier d’export STL", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", pady=4)    
-    ttk.Entry(export_frame, textvariable=export_path_var, width=34, style="Vaso.TEntry").grid(row=1, column=0, sticky="ew", pady=(0, 8))
+    options_tab.columnconfigure(0, weight=1)
+    options_tab.rowconfigure(0, weight=1)
+
+    export_frame = ttk.LabelFrame(
+        options_tab,
+        text="Export STL",
+        padding=12,
+        style="Vaso.TLabelframe",
+    )
+    export_frame.grid(row=0, column=0, sticky="nw", padx=0, pady=0)
+
+    ttk.Label(export_frame, text="Dossier d’export STL", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", pady=4)
+    ttk.Entry(export_frame, textvariable=export_path_var, width=48, style="Vaso.TEntry").grid(row=1, column=0, sticky="ew", pady=(0, 8))
 
     def on_browse_click() -> None:
         current_dir = Path(export_path_var.get()).expanduser()
@@ -465,17 +540,25 @@ def main() -> None:
     export_frame.columnconfigure(0, weight=1)
 
     # ---------------------------
-    # Aperçu matplotlib
+    # Onglet Aide
     # ---------------------------
-    figure = Figure(figsize=(6.0, 5.4), dpi=100)
-    ax_side = figure.add_subplot(121)
-    ax_top = figure.add_subplot(122)
-    figure.tight_layout(pad=2.0)
+    help_tab.columnconfigure(0, weight=1)
+    help_tab.rowconfigure(0, weight=1)
 
-    canvas = FigureCanvasTkAgg(figure, master=preview_frame)
-    canvas_widget = canvas.get_tk_widget()
-    canvas_widget.pack(fill="both", expand=True)
+    help_text = scrolledtext.ScrolledText(
+        help_tab,
+        wrap="word",
+        font=("Consolas", 10),
+        relief="flat",
+        borderwidth=0,
+    )
+    help_text.grid(row=0, column=0, sticky="nsew")
+    help_text.insert("1.0", load_help_text(base_dir))
+    help_text.configure(state="disabled")
 
+    # ---------------------------
+    # Fonctions
+    # ---------------------------
     def draw_preview(params: VaseParameters) -> None:
         z_values, radius_values = generate_outer_profile_points(params, samples_z=240)
         top_contour = generate_top_outer_contour(params)
@@ -506,6 +589,7 @@ def main() -> None:
             ax_side=ax_side,
             ax_top=ax_top,
             canvas=canvas,
+            help_text_widget=help_text,
         )
 
         figure.tight_layout(pad=2.0)
@@ -560,9 +644,6 @@ def main() -> None:
         rot_middle_var.set(str(rot_middle))
         rot_top_var.set(str(rot_top))
 
-    buttons_frame = ttk.Frame(main_frame, style="Vaso.TFrame")
-    buttons_frame.grid(row=3, column=0, columnspan=5, sticky="ew", pady=(4, 8))
-
     def build_current_params() -> VaseParameters:
         return build_params_from_ui(
             height_var=height_var,
@@ -587,10 +668,10 @@ def main() -> None:
             status_var.set("Aperçu mis à jour.")
         except ValueError as exc:
             status_var.set("Paramètres invalides.")
-            messagebox.showerror("Vaso", f"Paramètres invalides :\n{exc}")
+            messagebox.showerror(APP_NAME, f"Paramètres invalides :\n{exc}")
         except Exception as exc:
             status_var.set("Erreur pendant l’aperçu.")
-            messagebox.showerror("Vaso", f"Erreur pendant la mise à jour de l’aperçu :\n{exc}")
+            messagebox.showerror(APP_NAME, f"Erreur pendant la mise à jour de l’aperçu :\n{exc}")
 
     def on_random_click() -> None:
         try:
@@ -601,10 +682,10 @@ def main() -> None:
             status_var.set("Nouvelle seed aléatoire générée.")
         except ValueError as exc:
             status_var.set("Seed ou paramètres invalides.")
-            messagebox.showerror("Vaso", f"Valeur invalide :\n{exc}")
+            messagebox.showerror(APP_NAME, f"Valeur invalide :\n{exc}")
         except Exception as exc:
             status_var.set("Erreur pendant la génération aléatoire.")
-            messagebox.showerror("Vaso", f"Erreur pendant la génération aléatoire :\n{exc}")
+            messagebox.showerror(APP_NAME, f"Erreur pendant la génération aléatoire :\n{exc}")
 
     def on_generate_click() -> None:
         try:
@@ -641,13 +722,14 @@ def main() -> None:
                 ax_side=ax_side,
                 ax_top=ax_top,
                 canvas=canvas,
+                help_text_widget=help_text,
             )
             params = build_current_params()
             draw_preview(params)
             status_var.set(f"Thème appliqué : {theme_var.get()}")
         except Exception as exc:
             status_var.set("Erreur pendant l’application du thème.")
-            messagebox.showerror("Vaso", f"Erreur pendant l’application du thème :\n{exc}")
+            messagebox.showerror(APP_NAME, f"Erreur pendant l’application du thème :\n{exc}")
 
     theme_combo.bind("<<ComboboxSelected>>", on_theme_change)
 
@@ -672,12 +754,15 @@ def main() -> None:
         style="Vaso.TButton",
     ).pack(side="left")
 
+    # ---------------------------
+    # Barre de statut
+    # ---------------------------
     status_label = ttk.Label(
         main_frame,
         textvariable=status_var,
         style="Vaso.TLabel",
     )
-    status_label.grid(row=4, column=0, columnspan=5, sticky="w", pady=(4, 0))
+    status_label.grid(row=2, column=0, sticky="w", pady=(8, 0))
 
     apply_theme(
         root=root,
@@ -687,6 +772,7 @@ def main() -> None:
         ax_side=ax_side,
         ax_top=ax_top,
         canvas=canvas,
+        help_text_widget=help_text,
     )
 
     try:
