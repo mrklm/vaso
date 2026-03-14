@@ -7,6 +7,14 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [0.2.4] — 2026-03-14
+
+### Ajouté
+
+ - Fader pour regler le shading dans le rendu 3D
+ - Traduction du réglage Shading par Ombrage
+
+
 ## [0.2.3] — 2026-03-14
 
 ### Ajouté

@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.2.3"
+APP_VERSION = "0.2.4"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -478,9 +478,9 @@ def apply_theme_to_3d_axes(ax_3d, theme_name: str) -> None:
 def build_shaded_facecolors(
     triangles: np.ndarray,
     base_hex_color: str,
+    shading_strength: float,
     light_dir: tuple[float, float, float] = (-0.6, -0.8, 1.4),
-    ambient: float = 0.30,
-    diffuse_strength: float = 0.70,
+    ambient: float = 0.32,
     alpha: float = 0.96,
 ) -> np.ndarray:
     base_rgb = np.array(mcolors.to_rgb(base_hex_color), dtype=float)
@@ -501,14 +501,16 @@ def build_shaded_facecolors(
     normals = normals / normal_norms
 
     diffuse = np.clip(np.sum(normals * light, axis=1), 0.0, 1.0)
-    intensity = np.clip(ambient + diffuse_strength * diffuse, 0.0, 1.0)
+    lambert = np.clip(ambient + (1.0 - ambient) * diffuse, 0.0, 1.0)
+
+    shading_strength = float(np.clip(shading_strength, 0.0, 1.0))
+    intensity = np.clip((1.0 - shading_strength) + shading_strength * lambert, 0.0, 1.0)
 
     facecolors = np.empty((len(triangles), 4), dtype=float)
     facecolors[:, :3] = base_rgb[None, :] * intensity[:, None]
     facecolors[:, 3] = alpha
 
     return facecolors
-
 
 
 def main() -> None:
@@ -541,6 +543,9 @@ def main() -> None:
     status_var = tk.StringVar(value="Prêt.")
     export_path_var = tk.StringVar(value=str(get_default_export_dir()))
     seed_var = tk.StringVar(value="")
+    shading_var = tk.DoubleVar(value=68.0)
+    shading_label_var = tk.StringVar(value="68 %")
+
 
     height_var = tk.StringVar(value="180")
     wall_var = tk.StringVar(value="2.4")
@@ -687,11 +692,49 @@ def main() -> None:
 
     shape_frame.columnconfigure(1, weight=1)
 
+    def on_shading_change(value: str) -> None:
+        try:
+            shading_percent = float(value)
+            shading_label_var.set(f"{int(round(shading_percent))} %")
+
+            params = build_current_params()
+            draw_preview(params)
+            status_var.set("Shading 3D mis à jour.")
+        except Exception:
+            pass
+
+
+    preview_3d_controls = ttk.Frame(preview_3d_frame, style="Vaso.TFrame")
+    preview_3d_controls.pack(fill="x", pady=(0, 8))
+
+    ttk.Label(preview_3d_controls, text="Ombrage", style="Vaso.TLabel").pack(side="left")
+
+    shading_scale = ttk.Scale(
+        preview_3d_controls,
+        from_=0.0,
+        to=100.0,
+        orient="horizontal",
+        variable=shading_var,
+        command=on_shading_change,
+    )
+
+    shading_scale.pack(side="left", fill="x", expand=True, padx=(8, 8))
+
+    shading_value_label = ttk.Label(
+        preview_3d_controls,
+        textvariable=shading_label_var,
+        style="Vaso.TLabel",
+        width=6,
+        anchor="e",
+    )
+    shading_value_label.pack(side="left")
+
     figure_3d = Figure(figsize=(6.8, 6.2), dpi=100)
     ax_3d = figure_3d.add_subplot(111, projection="3d")
     canvas_3d = FigureCanvasTkAgg(figure_3d, master=preview_3d_frame)
     canvas_3d_widget = canvas_3d.get_tk_widget()
     canvas_3d_widget.pack(fill="both", expand=True)
+
 
     figure_side = Figure(figsize=(4.0, 3.0), dpi=100)
     ax_side = figure_side.add_subplot(111)
@@ -767,6 +810,8 @@ def main() -> None:
 
         if selected:
             export_path_var.set(selected)
+
+
 
     ttk.Button(
         export_frame,
@@ -847,24 +892,25 @@ def main() -> None:
         ax_top.locator_params(axis="y", nbins=5)
         ax_top.tick_params(labelsize=8)
 
-        # --- Aperçu 3D allégé + shading
+        # --- Aperçu 3D allégé + shading réglable
         triangles = vertices[faces]
         shaded_facecolors = build_shaded_facecolors(
             triangles=triangles,
             base_hex_color=colors["ACCENT"],
+            shading_strength=float(shading_var.get()) / 100.0,
             light_dir=(-0.6, -0.8, 1.4),
             ambient=0.32,
-            diffuse_strength=0.68,
             alpha=0.96,
         )
 
         mesh = Poly3DCollection(
             triangles,
-            linewidths=0.06,
+            linewidths=0.05,
             edgecolors=colors["PANEL"],
         )
         mesh.set_facecolors(shaded_facecolors)
         ax_3d.add_collection3d(mesh)
+
 
 
 
@@ -1130,9 +1176,11 @@ def main() -> None:
 
 
     try:
+        shading_label_var.set(f"{int(round(shading_var.get()))} %")
         draw_preview(build_current_params())
     except Exception as exc:
         status_var.set(f"Aperçu initial impossible : {exc}")
+
 
     root.mainloop()
 
