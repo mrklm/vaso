@@ -9,7 +9,9 @@ from tkinter import ttk, messagebox, filedialog, scrolledtext
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+from matplotlib import colors as mcolors
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+
 
 from model import Profile, VaseParameters
 from generator import (
@@ -19,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.2.2"
+APP_VERSION = "0.2.3"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -473,6 +475,42 @@ def apply_theme_to_3d_axes(ax_3d, theme_name: str) -> None:
     ax_3d.set_zticks([])
 
 
+def build_shaded_facecolors(
+    triangles: np.ndarray,
+    base_hex_color: str,
+    light_dir: tuple[float, float, float] = (-0.6, -0.8, 1.4),
+    ambient: float = 0.30,
+    diffuse_strength: float = 0.70,
+    alpha: float = 0.96,
+) -> np.ndarray:
+    base_rgb = np.array(mcolors.to_rgb(base_hex_color), dtype=float)
+
+    light = np.array(light_dir, dtype=float)
+    light_norm = np.linalg.norm(light)
+    if light_norm == 0:
+        light = np.array([0.0, 0.0, 1.0], dtype=float)
+    else:
+        light = light / light_norm
+
+    v1 = triangles[:, 1, :] - triangles[:, 0, :]
+    v2 = triangles[:, 2, :] - triangles[:, 0, :]
+    normals = np.cross(v1, v2)
+
+    normal_norms = np.linalg.norm(normals, axis=1, keepdims=True)
+    normal_norms[normal_norms == 0] = 1.0
+    normals = normals / normal_norms
+
+    diffuse = np.clip(np.sum(normals * light, axis=1), 0.0, 1.0)
+    intensity = np.clip(ambient + diffuse_strength * diffuse, 0.0, 1.0)
+
+    facecolors = np.empty((len(triangles), 4), dtype=float)
+    facecolors[:, :3] = base_rgb[None, :] * intensity[:, None]
+    facecolors[:, 3] = alpha
+
+    return facecolors
+
+
+
 def main() -> None:
     root = tk.Tk()
     root.title(f"{APP_NAME} — v{APP_VERSION}")
@@ -809,17 +847,25 @@ def main() -> None:
         ax_top.locator_params(axis="y", nbins=5)
         ax_top.tick_params(labelsize=8)
 
-        # --- Aperçu 3D allégé
+        # --- Aperçu 3D allégé + shading
         triangles = vertices[faces]
-        mesh = Poly3DCollection(
-            triangles,
-            linewidths=0.08,
-            edgecolors=colors["PANEL"],
-            alpha=0.95,
+        shaded_facecolors = build_shaded_facecolors(
+            triangles=triangles,
+            base_hex_color=colors["ACCENT"],
+            light_dir=(-0.6, -0.8, 1.4),
+            ambient=0.32,
+            diffuse_strength=0.68,
+            alpha=0.96,
         )
 
-        mesh.set_facecolor(colors["ACCENT"])
+        mesh = Poly3DCollection(
+            triangles,
+            linewidths=0.06,
+            edgecolors=colors["PANEL"],
+        )
+        mesh.set_facecolors(shaded_facecolors)
         ax_3d.add_collection3d(mesh)
+
 
 
         x_min = float(vertices[:, 0].min())
