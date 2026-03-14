@@ -9,6 +9,7 @@ from tkinter import ttk, messagebox, filedialog, scrolledtext
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 from model import Profile, VaseParameters
 from generator import (
@@ -18,7 +19,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.1.10"
+APP_VERSION = "0.2.0"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -399,6 +400,45 @@ def apply_theme(
 
     canvas.draw_idle()
 
+def apply_theme_to_3d_axes(ax_3d, theme_name: str) -> None:
+    colors = THEMES[theme_name]
+
+    panel = colors["PANEL"]
+    field = colors["FIELD"]
+    fg = colors["FG"]
+    accent = colors["ACCENT"]
+
+    ax_3d.set_facecolor(field)
+    ax_3d.set_title("Aperçu 3D", color=accent)
+
+    ax_3d.set_xlabel("X (mm)", color=fg)
+    ax_3d.set_ylabel("Y (mm)", color=fg)
+    ax_3d.set_zlabel("Z (mm)", color=fg)
+
+    ax_3d.tick_params(colors=fg)
+
+    # Fond des panneaux 3D
+    try:
+        ax_3d.xaxis.pane.set_facecolor(field)
+        ax_3d.yaxis.pane.set_facecolor(field)
+        ax_3d.zaxis.pane.set_facecolor(field)
+
+        ax_3d.xaxis.pane.set_edgecolor(accent)
+        ax_3d.yaxis.pane.set_edgecolor(accent)
+        ax_3d.zaxis.pane.set_edgecolor(accent)
+    except Exception:
+        pass
+
+    # Couleur des axes
+    try:
+        ax_3d.xaxis.line.set_color(accent)
+        ax_3d.yaxis.line.set_color(accent)
+        ax_3d.zaxis.line.set_color(accent)
+    except Exception:
+        pass
+
+    ax_3d.grid(True, color=accent, alpha=0.25)
+
 
 def main() -> None:
     root = tk.Tk()
@@ -700,6 +740,78 @@ def main() -> None:
         figure.tight_layout(pad=2.0)
         canvas.draw()
 
+    def show_3d_preview(params: VaseParameters) -> None:
+        vertices, faces = generate_vase_mesh(params)
+
+        preview_3d_window = tk.Toplevel(root)
+        preview_3d_window.title(f"{APP_NAME} v{APP_VERSION} — Aperçu 3D")
+        preview_3d_window.geometry("900x700")
+        preview_3d_window.minsize(700, 520)
+
+        colors = THEMES[theme_var.get()]
+        preview_3d_window.configure(bg=colors["BG"])
+
+        frame_3d = ttk.Frame(preview_3d_window, padding=12, style="Vaso.TFrame")
+        frame_3d.pack(fill="both", expand=True)
+
+        figure_3d = Figure(figsize=(7.4, 6.2), dpi=100)
+        figure_3d.patch.set_facecolor(colors["PANEL"])
+
+        ax_3d = figure_3d.add_subplot(111, projection="3d")
+
+        triangles = vertices[faces]
+        mesh = Poly3DCollection(
+            triangles,
+            linewidths=0.25,
+            edgecolors=colors["ACCENT"],
+            alpha=0.85,
+        )
+        mesh.set_facecolor(colors["FIELD"])
+        ax_3d.add_collection3d(mesh)
+
+        x_min = float(vertices[:, 0].min())
+        x_max = float(vertices[:, 0].max())
+        y_min = float(vertices[:, 1].min())
+        y_max = float(vertices[:, 1].max())
+        z_min = float(vertices[:, 2].min())
+        z_max = float(vertices[:, 2].max())
+
+        x_center = (x_min + x_max) / 2.0
+        y_center = (y_min + y_max) / 2.0
+        z_center = (z_min + z_max) / 2.0
+
+        x_size = x_max - x_min
+        y_size = y_max - y_min
+        z_size = z_max - z_min
+
+        half_range = max(x_size, y_size, z_size) / 2.0
+        if half_range <= 0:
+            half_range = 1.0
+
+        ax_3d.set_xlim(x_center - half_range, x_center + half_range)
+        ax_3d.set_ylim(y_center - half_range, y_center + half_range)
+        ax_3d.set_zlim(z_center - half_range, z_center + half_range)
+
+        ax_3d.view_init(elev=22, azim=35)
+        apply_theme_to_3d_axes(ax_3d, theme_var.get())
+
+        canvas_3d = FigureCanvasTkAgg(figure_3d, master=frame_3d)
+        canvas_3d_widget = canvas_3d.get_tk_widget()
+        canvas_3d_widget.pack(fill="both", expand=True)
+
+        toolbar_hint = ttk.Label(
+            frame_3d,
+            text="Astuce : clic gauche = rotation, molette = zoom, clic droit = déplacement selon le backend Matplotlib.",
+            style="Vaso.TLabel",
+            justify="left",
+        )
+        toolbar_hint.pack(anchor="w", pady=(8, 0))
+        
+
+        figure_3d.tight_layout(pad=1.6)
+        canvas_3d.draw()
+         
+
 
     def read_seed() -> int | None:
         raw = seed_var.get().strip()
@@ -790,6 +902,19 @@ def main() -> None:
             status_var.set("Erreur pendant l’aperçu.")
             messagebox.showerror(APP_NAME, f"Erreur pendant la mise à jour de l’aperçu :\n{exc}")
 
+    def on_preview_3d_click() -> None:
+        try:
+            params = build_current_params()
+            show_3d_preview(params)
+            status_var.set("Aperçu 3D ouvert.")
+        except ValueError as exc:
+            status_var.set("Paramètres invalides.")
+            messagebox.showerror(APP_NAME, f"Paramètres invalides :\n{exc}")
+        except Exception as exc:
+            status_var.set("Erreur pendant l’aperçu 3D.")
+            messagebox.showerror(APP_NAME, f"Erreur pendant l’ouverture de l’aperçu 3D :\n{exc}")
+
+
     def on_random_click() -> None:
         try:
             seed_var.set(str(random.randint(0, 999999999)))
@@ -863,6 +988,13 @@ def main() -> None:
 
     ttk.Button(
         buttons_frame,
+        text="Aperçu 3D",
+        command=on_preview_3d_click,
+        style="Vaso.TButton",
+    ).pack(side="left", padx=(0, 8))
+
+    ttk.Button(
+        buttons_frame,
         text="Aléatoire",
         command=on_random_click,
         style="Vaso.TButton",
@@ -874,6 +1006,7 @@ def main() -> None:
         command=on_generate_click,
         style="Vaso.TButton",
     ).pack(side="left")
+
 
     status_label = ttk.Label(
         main_frame,

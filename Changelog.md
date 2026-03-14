@@ -7,6 +7,12 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [0.2.0] — 2026-03-14
+
+### Ajouté
+
+ - Introduction du rendu 3D
+
 ## [0.1.10] — 2026-03-14
 
 ### Modifié
