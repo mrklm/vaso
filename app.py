@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import datetime
 import random
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -13,6 +14,8 @@ from generator import (
     generate_top_outer_contour,
 )
 from exporter import export_stl
+APP_VERSION = "0.1.2"
+APP_NAME = f"Vaso v{APP_VERSION}"
 
 
 THEMES = {
@@ -86,12 +89,28 @@ THEMES = {
 }
 
 
-def get_default_export_path() -> Path:
+def get_desktop_dir() -> Path:
     home = Path.home()
     desktop = home / "Desktop"
     if desktop.exists() and desktop.is_dir():
-        return desktop / "vaso_export.stl"
-    return home / "vaso_export.stl"
+        return desktop
+    return home
+
+
+def get_default_export_dir() -> Path:
+    today = datetime.now().strftime("%y-%m-%d")
+    return get_desktop_dir() / f"Vaso-{today}"
+
+
+def get_next_export_path(export_dir: Path) -> Path:
+    export_dir.mkdir(parents=True, exist_ok=True)
+
+    index = 0
+    while True:
+        candidate = export_dir / f"vaso_export_{index}.stl"
+        if not candidate.exists():
+            return candidate
+        index += 1
 
 
 def build_params_from_ui(
@@ -256,7 +275,7 @@ def apply_theme(
 
 def main() -> None:
     root = tk.Tk()
-    root.title("Vaso")
+    root.title(APP_NAME)
     root.geometry("1280x760")
     root.minsize(1160, 700)
 
@@ -282,7 +301,7 @@ def main() -> None:
 
     title_label = ttk.Label(
         main_frame,
-        text="Vaso",
+        text=APP_NAME,
         style="Vaso.Title.TLabel",
     )
     title_label.grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 8))
@@ -316,7 +335,7 @@ def main() -> None:
     description_label.grid(row=1, column=0, columnspan=5, sticky="w", pady=(0, 16))
 
     status_var = tk.StringVar(value="Prêt.")
-    export_path_var = tk.StringVar(value=str(get_default_export_path()))
+    export_path_var = tk.StringVar(value=str(get_default_export_dir()))
     seed_var = tk.StringVar(value="")
 
     height_var = tk.StringVar(value="180")
@@ -410,20 +429,17 @@ def main() -> None:
     # ---------------------------
     # Export STL
     # ---------------------------
-    ttk.Label(export_frame, text="Chemin du fichier STL", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", pady=4)
+    ttk.Label(export_frame, text="Dossier d’export STL", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", pady=4)    
     ttk.Entry(export_frame, textvariable=export_path_var, width=34, style="Vaso.TEntry").grid(row=1, column=0, sticky="ew", pady=(0, 8))
 
     def on_browse_click() -> None:
-        initial_path = Path(export_path_var.get())
-        initial_dir = initial_path.parent if initial_path.parent.exists() else Path.home()
-        initial_file = initial_path.name if initial_path.name else "vaso_export.stl"
+        current_dir = Path(export_path_var.get()).expanduser()
+        initial_dir = current_dir if current_dir.exists() and current_dir.is_dir() else get_desktop_dir()
 
-        selected = filedialog.asksaveasfilename(
-            title="Choisir le fichier STL à exporter",
+        selected = filedialog.askdirectory(
+            title="Choisir le dossier d’export STL",
             initialdir=str(initial_dir),
-            initialfile=initial_file,
-            defaultextension=".stl",
-            filetypes=[("Fichier STL", "*.stl"), ("Tous les fichiers", "*.*")],
+            mustexist=False,
         )
 
         if selected:
@@ -439,8 +455,8 @@ def main() -> None:
     ttk.Label(
         export_frame,
         text=(
-            "Par défaut, l’export pointe vers le Bureau.\n"
-            "Le chemin est géré via Path.home() pour Windows, macOS et Linux."
+            "Par défaut, l’export crée un dossier daté sur le Bureau.\n"
+            "Exemple : Vaso-26-03-14 puis vaso_export_0.stl, vaso_export_1.stl, etc."
         ),
         justify="left",
         style="Vaso.TLabel",
@@ -592,27 +608,28 @@ def main() -> None:
 
     def on_generate_click() -> None:
         try:
-            output_path = Path(export_path_var.get()).expanduser()
+            export_dir = Path(export_path_var.get()).expanduser()
 
-            if output_path.suffix.lower() != ".stl":
-                output_path = output_path.with_suffix(".stl")
+            if export_dir.suffix:
+                export_dir = export_dir.parent
 
-            output_path.parent.mkdir(parents=True, exist_ok=True)
+            export_dir.mkdir(parents=True, exist_ok=True)
+            output_path = get_next_export_path(export_dir)
 
             params = build_current_params()
             vertices, faces = generate_vase_mesh(params)
-            export_stl(vertices, faces, str(output_path))
+            export_stl(vertices, faces, output_path)
 
             status_var.set(f"STL généré : {output_path}")
-            messagebox.showinfo("Vaso", f"Fichier généré :\n{output_path}")
+            messagebox.showinfo(APP_NAME, f"Fichier généré :\n{output_path}")
 
         except ValueError as exc:
             status_var.set("Paramètres invalides.")
-            messagebox.showerror("Vaso", f"Paramètres invalides :\n{exc}")
+            messagebox.showerror(APP_NAME, f"Paramètres invalides :\n{exc}")
 
         except Exception as exc:
             status_var.set("Erreur pendant la génération.")
-            messagebox.showerror("Vaso", f"Erreur pendant la génération du STL :\n{exc}")
+            messagebox.showerror(APP_NAME, f"Erreur pendant la génération du STL :\n{exc}")
 
     def on_theme_change(event=None) -> None:
         try:
