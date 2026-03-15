@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.3.2"
+APP_VERSION = "0.3.3"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -451,8 +451,8 @@ def build_preview_params(params: VaseParameters) -> VaseParameters:
         height_mm=params.height_mm,
         wall_thickness_mm=params.wall_thickness_mm,
         bottom_thickness_mm=params.bottom_thickness_mm,
-        radial_samples=min(params.radial_samples, 72),
-        vertical_samples=min(params.vertical_samples, 72),
+        radial_samples=min(params.radial_samples, 96),
+        vertical_samples=min(params.vertical_samples, 96),
         open_top=params.open_top,
         close_bottom=params.close_bottom,
         texture_type=params.texture_type,
@@ -1260,16 +1260,6 @@ def main() -> None:
         ),
         justify="left",
         wraplength=280,
-        style="Vaso.TLabel",
-    ).grid(row=3, column=0, sticky="w", pady=(8, 0))
-
-    ttk.Label(
-        export_frame,
-        text=(
-            "Par défaut, l’export crée un dossier daté sur le Bureau.\n"
-            "Exemple : Vaso-26-03-14 puis vaso_export_0.stl, vaso_export_1.stl, etc."
-        ),
-        justify="left",
         style="Vaso.TLabel",
     ).grid(row=3, column=0, sticky="w", pady=(8, 0))
 
