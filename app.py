@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.3.7"
+APP_VERSION = "0.3.8"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -456,8 +456,8 @@ def build_preview_params(params: VaseParameters) -> VaseParameters:
         height_mm=params.height_mm,
         wall_thickness_mm=params.wall_thickness_mm,
         bottom_thickness_mm=params.bottom_thickness_mm,
-        radial_samples=min(params.radial_samples, 120),
-        vertical_samples=min(params.vertical_samples, 120),
+        radial_samples=min(params.radial_samples, 180),
+        vertical_samples=min(params.vertical_samples, 180),
         open_top=params.open_top,
         close_bottom=params.close_bottom,
         texture_type=params.texture_type,
@@ -477,7 +477,6 @@ def build_preview_params(params: VaseParameters) -> VaseParameters:
         ],
     )
     return preview_params
-
 
 
 def apply_theme(
@@ -664,9 +663,9 @@ def build_shaded_facecolors(
     triangles: np.ndarray,
     base_hex_color: str,
     shading_strength: float,
-    light_dir: tuple[float, float, float] = (-0.6, -0.8, 1.4),
-    ambient: float = 0.32,
-    alpha: float = 0.96,
+    light_dir: tuple[float, float, float] = (-0.9, -1.0, 1.8),
+    ambient: float = 0.16,
+    alpha: float = 0.98,
 ) -> np.ndarray:
     base_rgb = np.array(mcolors.to_rgb(base_hex_color), dtype=float)
 
@@ -677,6 +676,8 @@ def build_shaded_facecolors(
     else:
         light = light / light_norm
 
+    view_dir = np.array([0.0, 0.0, 1.0], dtype=float)
+
     v1 = triangles[:, 1, :] - triangles[:, 0, :]
     v2 = triangles[:, 2, :] - triangles[:, 0, :]
     normals = np.cross(v1, v2)
@@ -686,13 +687,39 @@ def build_shaded_facecolors(
     normals = normals / normal_norms
 
     diffuse = np.clip(np.sum(normals * light, axis=1), 0.0, 1.0)
-    lambert = np.clip(ambient + (1.0 - ambient) * diffuse, 0.0, 1.0)
+
+    half_vec = light + view_dir
+    half_norm = np.linalg.norm(half_vec)
+    if half_norm == 0:
+        half_vec = np.array([0.0, 0.0, 1.0], dtype=float)
+    else:
+        half_vec = half_vec / half_norm
+
+    specular = np.clip(np.sum(normals * half_vec, axis=1), 0.0, 1.0) ** 18
+    rim = (1.0 - np.clip(np.sum(normals * view_dir, axis=1), 0.0, 1.0)) ** 1.8
+
+    lambert = np.clip(ambient + 0.92 * diffuse, 0.0, 1.0)
+    lighting = np.clip(
+        lambert + 0.22 * specular + 0.18 * rim,
+        0.0,
+        1.35,
+    )
 
     shading_strength = float(np.clip(shading_strength, 0.0, 1.0))
-    intensity = np.clip((1.0 - shading_strength) + shading_strength * lambert, 0.0, 1.0)
+    lighting = 1.0 + (lighting - 1.0) * shading_strength
+
+    contrast_center = 0.72
+    contrast_gain = 1.55
+    lighting = np.clip(
+        contrast_center + (lighting - contrast_center) * contrast_gain,
+        0.0,
+        1.45,
+    )
+
+    face_rgb = np.clip(base_rgb[None, :] * lighting[:, None], 0.0, 1.0)
 
     facecolors = np.empty((len(triangles), 4), dtype=float)
-    facecolors[:, :3] = base_rgb[None, :] * intensity[:, None]
+    facecolors[:, :3] = face_rgb
     facecolors[:, 3] = alpha
 
     return facecolors
@@ -1426,25 +1453,26 @@ def main() -> None:
         ax_top.locator_params(axis="y", nbins=5)
         ax_top.tick_params(labelsize=8)
 
-        # --- Aperçu 3D allégé + shading réglable
+        # --- Aperçu 3D renforcé + shading plus contrasté
         triangles = vertices[faces]
         shaded_facecolors = build_shaded_facecolors(
             triangles=triangles,
             base_hex_color=colors["ACCENT"],
             shading_strength=float(shading_var.get()) / 100.0,
-            light_dir=(-0.6, -0.8, 1.4),
-            ambient=0.32,
-            alpha=0.96,
+            light_dir=(-0.9, -1.0, 1.8),
+            ambient=0.16,
+            alpha=0.98,
         )
 
         mesh = Poly3DCollection(
             triangles,
-            linewidths=0.05,
-            edgecolors=colors["PANEL"],
+            linewidths=0.0,
+            edgecolors="none",
+            antialiased=False,
         )
         mesh.set_facecolors(shaded_facecolors)
+        mesh.set_edgecolor("none")
         ax_3d.add_collection3d(mesh)
-
 
 
 
@@ -1482,7 +1510,7 @@ def main() -> None:
         except Exception:
             pass
 
-        ax_3d.view_init(elev=20, azim=32)
+        ax_3d.view_init(elev=24, azim=38)
 
         apply_theme(
             root=root,
