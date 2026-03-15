@@ -7,6 +7,14 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [0.3.1] - 2026-03-15
+
+### Ajouté
+
+ - combobox de textures, 8 textures + pas de texture
+ - combobox de zoom de texture
+
+
 ## [0.3.0] - 2026-03-15
 
 ### Ajouté

@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.3.0"
+APP_VERSION = "0.3.1"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -171,6 +171,26 @@ RANDOM_STYLE_RULES = {
         "shape": "bulbe",
     },
 }
+
+TEXTURE_TYPE_NAMES = [
+    "Pas de texture",
+    "Cannelures",
+    "Ondulations",
+    "Torsade",
+    "Martelé",
+    "Facettes",
+    "Anneaux",
+    "Écailles",
+    "Spirale",
+]
+
+TEXTURE_ZOOM_NAMES = [
+    "Très fin",
+    "Fin",
+    "Moyen",
+    "Gros",
+    "Très gros",
+]
 
 
 def get_settings_path(base_dir: Path) -> Path:
@@ -708,6 +728,8 @@ def main() -> None:
     export_path_var = tk.StringVar(value=str(get_default_export_dir()))
     seed_var = tk.StringVar(value="")
     random_style_var = tk.StringVar(value="Pur aléatoire")
+    texture_type_var = tk.StringVar(value="Pas de texture")
+    texture_zoom_var = tk.StringVar(value="Moyen")
     shading_var = tk.DoubleVar(value=68.0)
     shading_label_var = tk.StringVar(value="68 %")
 
@@ -893,6 +915,28 @@ def main() -> None:
     ttk.Label(general_form_tab, text="Seed", style="Vaso.TLabel").grid(row=6, column=0, sticky="w", pady=4)
     ttk.Entry(general_form_tab, textvariable=seed_var, width=6, style="Vaso.TEntry").grid(row=6, column=1, sticky="w", pady=4)
 
+    ttk.Label(general_form_tab, text="Texture", style="Vaso.TLabel").grid(row=7, column=0, sticky="w", pady=4)
+    texture_type_combo = ttk.Combobox(
+        general_form_tab,
+        textvariable=texture_type_var,
+        values=TEXTURE_TYPE_NAMES,
+        state="readonly",
+        width=13,
+        style="Vaso.TCombobox",
+    )
+    texture_type_combo.grid(row=7, column=1, sticky="w", pady=4)
+
+    ttk.Label(general_form_tab, text="Zoom texture", style="Vaso.TLabel").grid(row=8, column=0, sticky="w", pady=4)
+    texture_zoom_combo = ttk.Combobox(
+        general_form_tab,
+        textvariable=texture_zoom_var,
+        values=TEXTURE_ZOOM_NAMES,
+        state="readonly",
+        width=13,
+        style="Vaso.TCombobox",
+    )
+    texture_zoom_combo.grid(row=8, column=1, sticky="w", pady=4)
+
     general_form_tab.columnconfigure(1, weight=0)
 
     profiles_table_frame = ttk.Frame(shape_form_tab, style="Vaso.TFrame")
@@ -1055,6 +1099,16 @@ def main() -> None:
         random_style_sides_var.set(rules["sides"])
         random_style_rot_var.set(rules["rot"])
         random_style_shape_var.set(rules["shape"])
+
+    def on_texture_controls_change(event=None) -> None:
+        try:
+            params = build_current_params()
+            draw_preview(params)
+            status_var.set(
+                f"Texture : {texture_type_var.get()} — Zoom : {texture_zoom_var.get()}."
+            )
+        except Exception:
+            pass
 
     def on_shading_change(value: str) -> None:
         try:
@@ -1680,6 +1734,9 @@ def main() -> None:
         vertical_var.set(str(vertical))
         profile_count_var.set(str(profile_count))
 
+        texture_type_var.set(rng.choice(TEXTURE_TYPE_NAMES))
+        texture_zoom_var.set(rng.choice(TEXTURE_ZOOM_NAMES))
+
         active_z_values = sorted(rng.sample(range(z_pool_start, z_pool_end), profile_count - 2))
         active_z_values = [0] + active_z_values + [100]
 
@@ -1811,7 +1868,7 @@ def main() -> None:
 
 
     def build_current_params() -> VaseParameters:
-        return build_params_from_ui(
+        params = build_params_from_ui(
             height_var=height_var,
             wall_var=wall_var,
             bottom_var=bottom_var,
@@ -1823,6 +1880,11 @@ def main() -> None:
             sides_vars=sides_vars,
             rotation_vars=rotation_vars,
         )
+
+        params.texture_type = texture_type_var.get()
+        params.texture_zoom = texture_zoom_var.get()
+
+        return params
 
 
     def on_preview_click() -> None:
@@ -1846,7 +1908,7 @@ def main() -> None:
             params = build_current_params()
             draw_preview(params)
             status_var.set(
-                f"Nouvelle seed aléatoire générée — {len(params.profiles)} profils actifs."
+                f"Seed générée — {len(params.profiles)} profils — texture : {texture_type_var.get()} / {texture_zoom_var.get()}."
             )
         except ValueError as exc:
             status_var.set("Seed ou paramètres invalides.")
@@ -1905,6 +1967,8 @@ def main() -> None:
     theme_combo.bind("<<ComboboxSelected>>", on_theme_change)
     printer_profile_combo.bind("<<ComboboxSelected>>", on_printer_profile_selected)
     random_style_combo.bind("<<ComboboxSelected>>", update_random_style_info)
+    texture_type_combo.bind("<<ComboboxSelected>>", on_texture_controls_change)
+    texture_zoom_combo.bind("<<ComboboxSelected>>", on_texture_controls_change)
     profile_count_var.trace_add("write", lambda *args: update_profile_fields_state())
 
     ttk.Button(
