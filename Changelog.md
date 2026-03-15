@@ -7,6 +7,14 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [0.2.11] — 2026-03-15
+
+### Modifié
+
+ - fenêtres de droite remises l'une au dessus de l'autre
+ - Boutons centrés
+
+
 ## [0.2.10] — 2026-03-15
 
 ### Modifié

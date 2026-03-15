@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.2.10"
+APP_VERSION = "0.2.11"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -721,7 +721,8 @@ def main() -> None:
     general_tab.columnconfigure(2, weight=0)
 
     general_tab.rowconfigure(0, weight=1)
-    general_tab.rowconfigure(1, weight=0)
+    general_tab.rowconfigure(1, weight=1)
+    general_tab.rowconfigure(2, weight=0)
 
     left_panel_frame = ttk.LabelFrame(
         general_tab,
@@ -729,7 +730,7 @@ def main() -> None:
         padding=8,
         style="Vaso.TLabelframe",
     )
-    left_panel_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 12), pady=(0, 12))
+    left_panel_frame.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, 12), pady=(0, 12))
 
     left_panel_frame.columnconfigure(0, weight=1)
     left_panel_frame.rowconfigure(0, weight=1)
@@ -744,9 +745,9 @@ def main() -> None:
     left_notebook.add(shape_form_tab, text="Profils du vase")
 
     general_form_tab.columnconfigure(0, weight=0)
-    general_form_tab.columnconfigure(1, weight=1)
+    general_form_tab.columnconfigure(1, weight=0)
 
-    shape_form_tab.columnconfigure(0, weight=1)
+    shape_form_tab.columnconfigure(0, weight=0)
     shape_form_tab.rowconfigure(0, weight=1)
 
     preview_3d_frame = ttk.LabelFrame(
@@ -755,7 +756,7 @@ def main() -> None:
         padding=12,
         style="Vaso.TLabelframe",
     )
-    preview_3d_frame.grid(row=0, column=1, sticky="nsew", padx=(0, 12), pady=(0, 4))
+    preview_3d_frame.grid(row=0, column=1, rowspan=2, sticky="nsew", padx=(0, 12), pady=(0, 12))
 
     side_preview_frame = ttk.LabelFrame(
         general_tab,
@@ -771,38 +772,45 @@ def main() -> None:
         padding=12,
         style="Vaso.TLabelframe",
     )
-    top_preview_frame.grid(row=0, column=3, sticky="nsew", pady=(0, 12))
+    top_preview_frame.grid(row=1, column=2, sticky="nsew", pady=(0, 12))
 
     buttons_frame = ttk.Frame(general_tab, style="Vaso.TFrame")
-    buttons_frame.grid(row=1, column=1, columnspan=2, sticky="n", pady=(2, 0))
+    buttons_frame.grid(row=2, column=0, columnspan=3, sticky="ew", pady=(2, 0))
+
+    buttons_frame.columnconfigure(0, weight=1)
+    buttons_frame.columnconfigure(1, weight=0)
+    buttons_frame.columnconfigure(2, weight=1)
+
+    buttons_inner_frame = ttk.Frame(buttons_frame, style="Vaso.TFrame")
+    buttons_inner_frame.grid(row=0, column=1)
 
 
 
     ttk.Label(general_form_tab, text="Hauteur (mm)", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", pady=4)
-    ttk.Entry(general_form_tab, textvariable=height_var, width=12, style="Vaso.TEntry").grid(row=0, column=1, sticky="ew", pady=4)
+    ttk.Entry(general_form_tab, textvariable=height_var, width=6, style="Vaso.TEntry").grid(row=0, column=1, sticky="w", pady=4)
 
     ttk.Label(general_form_tab, text="Épaisseur coque (mm)", style="Vaso.TLabel").grid(row=1, column=0, sticky="w", pady=4)
-    ttk.Entry(general_form_tab, textvariable=wall_var, width=12, style="Vaso.TEntry").grid(row=1, column=1, sticky="ew", pady=4)
+    ttk.Entry(general_form_tab, textvariable=wall_var, width=6, style="Vaso.TEntry").grid(row=1, column=1, sticky="w", pady=4)
 
     ttk.Label(general_form_tab, text="Épaisseur fond (mm)", style="Vaso.TLabel").grid(row=2, column=0, sticky="w", pady=4)
-    ttk.Entry(general_form_tab, textvariable=bottom_var, width=12, style="Vaso.TEntry").grid(row=2, column=1, sticky="ew", pady=4)
+    ttk.Entry(general_form_tab, textvariable=bottom_var, width=6, style="Vaso.TEntry").grid(row=2, column=1, sticky="w", pady=4)
 
     ttk.Label(general_form_tab, text="Résolution circulaire", style="Vaso.TLabel").grid(row=3, column=0, sticky="w", pady=4)
-    ttk.Entry(general_form_tab, textvariable=radial_var, width=12, style="Vaso.TEntry").grid(row=3, column=1, sticky="ew", pady=4)
+    ttk.Entry(general_form_tab, textvariable=radial_var, width=6, style="Vaso.TEntry").grid(row=3, column=1, sticky="w", pady=4)
 
     ttk.Label(general_form_tab, text="Résolution verticale", style="Vaso.TLabel").grid(row=4, column=0, sticky="w", pady=4)
-    ttk.Entry(general_form_tab, textvariable=vertical_var, width=12, style="Vaso.TEntry").grid(row=4, column=1, sticky="ew", pady=4)
+    ttk.Entry(general_form_tab, textvariable=vertical_var, width=6, style="Vaso.TEntry").grid(row=4, column=1, sticky="w", pady=4)
 
     ttk.Label(general_form_tab, text="Nombre de profils (3-10)", style="Vaso.TLabel").grid(row=5, column=0, sticky="w", pady=4)
-    ttk.Entry(general_form_tab, textvariable=profile_count_var, width=12, style="Vaso.TEntry").grid(row=5, column=1, sticky="ew", pady=4)
+    ttk.Entry(general_form_tab, textvariable=profile_count_var, width=6, style="Vaso.TEntry").grid(row=5, column=1, sticky="w", pady=4)
 
     ttk.Label(general_form_tab, text="Seed", style="Vaso.TLabel").grid(row=6, column=0, sticky="w", pady=4)
-    ttk.Entry(general_form_tab, textvariable=seed_var, width=12, style="Vaso.TEntry").grid(row=6, column=1, sticky="ew", pady=4)
+    ttk.Entry(general_form_tab, textvariable=seed_var, width=6, style="Vaso.TEntry").grid(row=6, column=1, sticky="w", pady=4)
 
-    general_form_tab.columnconfigure(1, weight=1)
+    general_form_tab.columnconfigure(1, weight=0)
 
     profiles_table_frame = ttk.Frame(shape_form_tab, style="Vaso.TFrame")
-    profiles_table_frame.grid(row=0, column=0, sticky="nsew")
+    profiles_table_frame.grid(row=0, column=0, sticky="nw")
 
     ttk.Label(profiles_table_frame, text="Profil", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", padx=(0, 8), pady=(0, 6))
     ttk.Label(profiles_table_frame, text="Hauteur (%)", style="Vaso.TLabel").grid(row=0, column=1, sticky="w", padx=4, pady=(0, 6))
@@ -830,37 +838,37 @@ def main() -> None:
         z_entry = ttk.Entry(
             profiles_table_frame,
             textvariable=z_ratio_vars[i],
-            width=8,
+            width=4,
             style="Vaso.TEntry",
         )
-        z_entry.grid(row=row_index, column=1, sticky="ew", padx=4, pady=3)
+        z_entry.grid(row=row_index, column=1, sticky="w", padx=4, pady=3)
         profile_z_entries.append(z_entry)
 
         diameter_entry = ttk.Entry(
             profiles_table_frame,
             textvariable=diameter_vars[i],
-            width=10,
+            width=5,
             style="Vaso.TEntry",
         )
-        diameter_entry.grid(row=row_index, column=2, sticky="ew", padx=4, pady=3)
+        diameter_entry.grid(row=row_index, column=2, sticky="w", padx=4, pady=3)
         profile_diameter_entries.append(diameter_entry)
 
         sides_entry = ttk.Entry(
             profiles_table_frame,
             textvariable=sides_vars[i],
-            width=8,
+            width=4,
             style="Vaso.TEntry",
         )
-        sides_entry.grid(row=row_index, column=3, sticky="ew", padx=4, pady=3)
+        sides_entry.grid(row=row_index, column=3, sticky="w", padx=4, pady=3)
         profile_sides_entries.append(sides_entry)
 
         rotation_entry = ttk.Entry(
             profiles_table_frame,
             textvariable=rotation_vars[i],
-            width=10,
+            width=5,
             style="Vaso.TEntry",
         )
-        rotation_entry.grid(row=row_index, column=4, sticky="ew", padx=4, pady=3)
+        rotation_entry.grid(row=row_index, column=4, sticky="w", padx=4, pady=3)
         profile_rotation_entries.append(rotation_entry)
 
     ttk.Label(
@@ -877,10 +885,10 @@ def main() -> None:
         justify="left",
     ).grid(row=2, column=0, sticky="w", pady=(0, 0))
 
-    profiles_table_frame.columnconfigure(1, weight=1)
-    profiles_table_frame.columnconfigure(2, weight=1)
-    profiles_table_frame.columnconfigure(3, weight=1)
-    profiles_table_frame.columnconfigure(4, weight=1)
+    profiles_table_frame.columnconfigure(1, weight=0)
+    profiles_table_frame.columnconfigure(2, weight=0)
+    profiles_table_frame.columnconfigure(3, weight=0)
+    profiles_table_frame.columnconfigure(4, weight=0)
 
     def update_profile_fields_state(event=None) -> None:
         try:
@@ -1591,21 +1599,21 @@ def main() -> None:
     profile_count_var.trace_add("write", lambda *args: update_profile_fields_state())
 
     ttk.Button(
-        buttons_frame,
+        buttons_inner_frame,
         text="Aperçu",
         command=on_preview_click,
         style="Vaso.TButton",
     ).pack(side="left", padx=(0, 8))
 
     ttk.Button(
-        buttons_frame,
+        buttons_inner_frame,
         text="Aléatoire",
         command=on_random_click,
         style="Vaso.TButton",
     ).pack(side="left", padx=(0, 8))
 
     ttk.Button(
-        buttons_frame,
+        buttons_inner_frame,
         text="Générer le STL",
         command=on_generate_click,
         style="Vaso.TButton",
