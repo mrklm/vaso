@@ -7,6 +7,13 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [0.2.9] — 2026-03-15
+
+### Modifié
+
+ - Onglet options remanié
+
+
 ## [0.2.8] — 2026-03-15
 
 ### Ajouté

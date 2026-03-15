@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.2.8"
+APP_VERSION = "0.2.9"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -866,16 +866,23 @@ def main() -> None:
 
     # Options
     options_tab.columnconfigure(0, weight=1)
-    options_tab.rowconfigure(0, weight=0)
-    options_tab.rowconfigure(1, weight=1)
+    options_tab.rowconfigure(0, weight=1)
+
+    options_row_frame = ttk.Frame(options_tab, style="Vaso.TFrame")
+    options_row_frame.grid(row=0, column=0, sticky="nsew")
+
+    options_row_frame.columnconfigure(0, weight=1, uniform="options_cols")
+    options_row_frame.columnconfigure(1, weight=1, uniform="options_cols")
+    options_row_frame.columnconfigure(2, weight=1, uniform="options_cols")
+    options_row_frame.rowconfigure(0, weight=1)
 
     theme_frame = ttk.LabelFrame(
-        options_tab,
+        options_row_frame,
         text="Thème",
         padding=12,
         style="Vaso.TLabelframe",
     )
-    theme_frame.grid(row=0, column=0, sticky="nw", padx=(0, 0), pady=(0, 12))
+    theme_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 8), pady=(0, 0))
 
     ttk.Label(theme_frame, text="Thème actif", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", pady=4)
 
@@ -894,28 +901,30 @@ def main() -> None:
         text="Le dernier thème sélectionné est mémorisé.",
         style="Vaso.TLabel",
         justify="left",
+        wraplength=260,
     ).grid(row=2, column=0, sticky="w", pady=(4, 0))
 
     theme_frame.columnconfigure(0, weight=1)
+    theme_frame.rowconfigure(3, weight=1)
 
     build_volume_frame = ttk.LabelFrame(
-        options_tab,
+        options_row_frame,
         text="Volume imprimante",
         padding=12,
         style="Vaso.TLabelframe",
     )
-    build_volume_frame.grid(row=1, column=0, sticky="nw", padx=(0, 0), pady=(0, 12))
+    build_volume_frame.grid(row=0, column=1, sticky="nsew", padx=8, pady=(0, 0))
 
     export_frame = ttk.LabelFrame(
-        options_tab,
+        options_row_frame,
         text="Export STL",
         padding=12,
         style="Vaso.TLabelframe",
     )
-    export_frame.grid(row=2, column=0, sticky="nw", padx=(0, 0), pady=(0, 0))
+    export_frame.grid(row=0, column=2, sticky="nsew", padx=(8, 0), pady=(0, 0))
 
     ttk.Label(export_frame, text="Dossier d’export STL", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", pady=4)
-    ttk.Entry(export_frame, textvariable=export_path_var, width=48, style="Vaso.TEntry").grid(row=1, column=0, sticky="ew", pady=(0, 8))
+    ttk.Entry(export_frame, textvariable=export_path_var, width=32, style="Vaso.TEntry").grid(row=1, column=0, sticky="ew", pady=(0, 8))
 
     def on_browse_click() -> None:
         current_dir = Path(export_path_var.get()).expanduser()
@@ -930,14 +939,24 @@ def main() -> None:
         if selected:
             export_path_var.set(selected)
 
-
-
     ttk.Button(
         export_frame,
         text="Parcourir...",
         command=on_browse_click,
         style="Vaso.TButton",
     ).grid(row=2, column=0, sticky="w", pady=(0, 8))
+
+    ttk.Label(
+        export_frame,
+        text=(
+            "Par défaut, l’export crée un dossier daté sur le Bureau.\n"
+            "Exemple : Vaso-26-03-14 puis vaso_export_0.stl,\n"
+            "vaso_export_1.stl, etc."
+        ),
+        justify="left",
+        wraplength=280,
+        style="Vaso.TLabel",
+    ).grid(row=3, column=0, sticky="w", pady=(8, 0))
 
     ttk.Label(
         export_frame,
@@ -998,11 +1017,13 @@ def main() -> None:
             "pour contraindre la génération aléatoire."
         ),
         justify="left",
+        wraplength=280,
         style="Vaso.TLabel",
     ).grid(row=5, column=0, columnspan=3, sticky="w", pady=(8, 0))
 
+    build_volume_frame.columnconfigure(0, weight=0)
     build_volume_frame.columnconfigure(1, weight=1)
-    build_volume_frame.columnconfigure(2, weight=1)  
+    build_volume_frame.columnconfigure(2, weight=1) 
 
     export_frame.columnconfigure(0, weight=1)
 
