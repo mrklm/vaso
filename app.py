@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.2.12"
+APP_VERSION = "0.2.13"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -307,10 +307,10 @@ def _build_profiles_from_explicit_ui(
         )
 
     if abs(profiles[0].z_ratio - 0.0) > 1e-9:
-        raise ValueError("Le profil 1 doit être à 0 %.")
+        raise ValueError("Le profil 1 = 0 %.")
 
     if abs(profiles[-1].z_ratio - 1.0) > 1e-9:
-        raise ValueError("Le dernier profil utilisé doit être à 100 %.")
+        raise ValueError("Le dernier profil = 100 %.")
 
     return profiles
 
