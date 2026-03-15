@@ -7,6 +7,25 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+
+## [0.2.6] — 2026-03-14
+
+### Ajouté
+
+ - Ajout de la taille max possible pour l'imprimante 3D dans l'ongelt options
+
+
+## [0.2.5] — 2026-03-14
+
+### Modifié
+
+ - Doublons de titres des fen^tres 2D et 3D supprimés
+
+### Ajouté
+
+ - Centrage des boutons -Aperçu- / -aléatoire- / -Générer .STL-
+
+
 ## [0.2.4] — 2026-03-14
 
 ### Ajouté

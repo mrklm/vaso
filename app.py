@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.2.4"
+APP_VERSION = "0.2.6"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -442,7 +442,6 @@ def apply_theme_to_3d_axes(ax_3d, theme_name: str) -> None:
     accent = colors["ACCENT"]
 
     ax_3d.set_facecolor(field)
-    ax_3d.set_title("Aperçu 3D", color=accent, fontsize=11, pad=10)
 
     ax_3d.set_xlabel("X", color=fg, fontsize=9, labelpad=6)
     ax_3d.set_ylabel("Y", color=fg, fontsize=9, labelpad=6)
@@ -546,6 +545,9 @@ def main() -> None:
     shading_var = tk.DoubleVar(value=68.0)
     shading_label_var = tk.StringVar(value="68 %")
 
+    build_width_max_var = tk.StringVar(value="220")
+    build_depth_max_var = tk.StringVar(value="220")
+    build_height_max_var = tk.StringVar(value="250")
 
     height_var = tk.StringVar(value="180")
     wall_var = tk.StringVar(value="2.4")
@@ -612,7 +614,8 @@ def main() -> None:
         padding=12,
         style="Vaso.TLabelframe",
     )
-    preview_3d_frame.grid(row=0, column=1, rowspan=2, sticky="nsew", padx=(0, 12), pady=(0, 12))
+    preview_3d_frame.grid(row=0, column=1, rowspan=2, sticky="nsew", padx=(0, 12), pady=(0, 4))
+
 
     side_preview_frame = ttk.LabelFrame(
         general_tab,
@@ -736,21 +739,21 @@ def main() -> None:
     canvas_3d_widget.pack(fill="both", expand=True)
 
 
-    figure_side = Figure(figsize=(4.0, 3.0), dpi=100)
+    figure_side = Figure(figsize=(2.65, 3.0), dpi=100)
     ax_side = figure_side.add_subplot(111)
     canvas_side = FigureCanvasTkAgg(figure_side, master=side_preview_frame)
     canvas_side_widget = canvas_side.get_tk_widget()
     canvas_side_widget.pack(fill="both", expand=True)
 
-    figure_top = Figure(figsize=(4.0, 3.0), dpi=100)
+    figure_top = Figure(figsize=(2.65, 3.0), dpi=100)
     ax_top = figure_top.add_subplot(111)
     canvas_top = FigureCanvasTkAgg(figure_top, master=top_preview_frame)
     canvas_top_widget = canvas_top.get_tk_widget()
     canvas_top_widget.pack(fill="both", expand=True)
 
-    buttons_frame = ttk.Frame(general_tab, style="Vaso.TFrame")
-    buttons_frame.grid(row=2, column=0, columnspan=3, sticky="w", pady=(0, 8))
 
+    buttons_frame = ttk.Frame(general_tab, style="Vaso.TFrame")
+    buttons_frame.grid(row=2, column=1, sticky="n", pady=(2, 0))
 
 
     # Options
@@ -787,13 +790,21 @@ def main() -> None:
 
     theme_frame.columnconfigure(0, weight=1)
 
+    build_volume_frame = ttk.LabelFrame(
+        options_tab,
+        text="Volume imprimante",
+        padding=12,
+        style="Vaso.TLabelframe",
+    )
+    build_volume_frame.grid(row=1, column=0, sticky="nw", padx=(0, 0), pady=(0, 12))
+
     export_frame = ttk.LabelFrame(
         options_tab,
         text="Export STL",
         padding=12,
         style="Vaso.TLabelframe",
     )
-    export_frame.grid(row=1, column=0, sticky="nw", padx=(0, 0), pady=(0, 0))
+    export_frame.grid(row=2, column=0, sticky="nw", padx=(0, 0), pady=(0, 0))
 
     ttk.Label(export_frame, text="Dossier d’export STL", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", pady=4)
     ttk.Entry(export_frame, textvariable=export_path_var, width=48, style="Vaso.TEntry").grid(row=1, column=0, sticky="ew", pady=(0, 8))
@@ -829,6 +840,27 @@ def main() -> None:
         justify="left",
         style="Vaso.TLabel",
     ).grid(row=3, column=0, sticky="w", pady=(8, 0))
+
+    ttk.Label(build_volume_frame, text="Largeur max (mm)", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", pady=4)
+    ttk.Entry(build_volume_frame, textvariable=build_width_max_var, width=12, style="Vaso.TEntry").grid(row=0, column=1, sticky="ew", pady=4)
+
+    ttk.Label(build_volume_frame, text="Profondeur max (mm)", style="Vaso.TLabel").grid(row=1, column=0, sticky="w", pady=4)
+    ttk.Entry(build_volume_frame, textvariable=build_depth_max_var, width=12, style="Vaso.TEntry").grid(row=1, column=1, sticky="ew", pady=4)
+
+    ttk.Label(build_volume_frame, text="Hauteur max (mm)", style="Vaso.TLabel").grid(row=2, column=0, sticky="w", pady=4)
+    ttk.Entry(build_volume_frame, textvariable=build_height_max_var, width=12, style="Vaso.TEntry").grid(row=2, column=1, sticky="ew", pady=4)
+
+    ttk.Label(
+        build_volume_frame,
+        text=(
+            "Ces limites sont utilisées pour contraindre\n"
+            "la génération aléatoire aux dimensions imprimables."
+        ),
+        justify="left",
+        style="Vaso.TLabel",
+    ).grid(row=3, column=0, columnspan=2, sticky="w", pady=(8, 0))
+
+    build_volume_frame.columnconfigure(1, weight=1)    
 
     export_frame.columnconfigure(0, weight=1)
 
@@ -870,9 +902,9 @@ def main() -> None:
         ax_side.plot(radius_values, z_values, linewidth=1.4)
         ax_side.fill_betweenx(z_values, -radius_values, radius_values, alpha=0.12)
 
-        ax_side.set_title("Silhouette", fontsize=11, pad=8)
         ax_side.set_xlabel("Largeur (mm)", fontsize=9)
         ax_side.set_ylabel("Hauteur (mm)", fontsize=9)
+
         ax_side.set_aspect("equal", adjustable="box")
 
         ax_side.locator_params(axis="x", nbins=5)
@@ -883,9 +915,9 @@ def main() -> None:
         ax_top.plot(top_contour_closed[:, 0], top_contour_closed[:, 1], linewidth=1.4)
         ax_top.fill(top_contour_closed[:, 0], top_contour_closed[:, 1], alpha=0.12)
 
-        ax_top.set_title("Vue du haut", fontsize=11, pad=8)
         ax_top.set_xlabel("X (mm)", fontsize=9)
         ax_top.set_ylabel("Y (mm)", fontsize=9)
+
         ax_top.set_aspect("equal", adjustable="box")
 
         ax_top.locator_params(axis="x", nbins=5)
@@ -982,15 +1014,38 @@ def main() -> None:
             return None
         return int(raw)
 
+    def read_build_volume_limits() -> tuple[float, float, float]:
+        width_max = float(build_width_max_var.get())
+        depth_max = float(build_depth_max_var.get())
+        height_max = float(build_height_max_var.get())
+
+        if width_max <= 0:
+            raise ValueError("La largeur max d’impression doit être > 0.")
+        if depth_max <= 0:
+            raise ValueError("La profondeur max d’impression doit être > 0.")
+        if height_max <= 0:
+            raise ValueError("La hauteur max d’impression doit être > 0.")
+
+        return width_max, depth_max, height_max        
+
     def randomize_fields() -> None:
         seed_value = read_seed()
         if seed_value is None:
             seed_value = random.randint(0, 999999999)
             seed_var.set(str(seed_value))
 
+        width_max, depth_max, height_max = read_build_volume_limits()
+
         rng = random.Random(seed_value)
 
-        height = rng.randint(120, 260)
+        usable_diameter_max = min(width_max, depth_max)
+        if usable_diameter_max < 40:
+            raise ValueError("Le volume imprimante est trop petit pour générer un vase aléatoire exploitable.")
+
+        height_upper = max(120, int(height_max))
+        height_lower = min(120, height_upper)
+        height = rng.randint(height_lower, height_upper)
+
         wall = round(rng.uniform(2.0, 3.6), 1)
         bottom = round(rng.uniform(max(wall, 2.5), 6.0), 1)
 
@@ -999,9 +1054,16 @@ def main() -> None:
 
         profile_count = rng.randint(3, 10)
 
-        d_bottom = rng.randint(25, 70)
-        d_middle = rng.randint(max(d_bottom + 10, 45), 130)
-        d_top = rng.randint(20, 80)
+        d_bottom_max = max(25, int(usable_diameter_max * 0.55))
+        d_bottom = rng.randint(25, d_bottom_max)
+
+        d_middle_min = max(d_bottom + 10, 45)
+        d_middle_max = max(d_middle_min, int(usable_diameter_max * 0.92))
+        d_middle = rng.randint(d_middle_min, d_middle_max)
+
+        d_top_min = 20
+        d_top_max = max(d_top_min, int(usable_diameter_max * 0.65))
+        d_top = rng.randint(d_top_min, d_top_max)
 
         s_bottom = rng.randint(3, 10)
         s_middle = rng.randint(3, 12)
@@ -1011,7 +1073,6 @@ def main() -> None:
         rot_top = rng.randint(0, 90)
 
         middle_height_ratio = rng.randint(38, 62)
-
 
         height_var.set(str(height))
         wall_var.set(f"{wall:.1f}")
