@@ -111,11 +111,11 @@ def _interpolate_contours(c1: np.ndarray, c2: np.ndarray, t: float) -> np.ndarra
 
 def _texture_zoom_to_params(texture_zoom: str) -> tuple[float, float]:
     mapping = {
-        "Très fin": (0.45, 18.0),
-        "Fin": (0.75, 12.0),
-        "Moyen": (1.10, 8.0),
-        "Gros": (1.70, 5.0),
-        "Très gros": (2.40, 3.0),
+        "Très fin": (0.7, 20.0),
+        "Fin": (1.2, 13.0),
+        "Moyen": (2.0, 8.0),
+        "Gros": (3.0, 5.0),
+        "Très gros": (4.2, 3.0),
     }
     return mapping.get(texture_zoom, mapping["Moyen"])
 
@@ -148,17 +148,42 @@ def _apply_texture_to_contour(
     if texture_type == "Cannelures":
         offset = amplitude_mm * np.cos(base_frequency * angles)
 
-    elif texture_type == "Ondulations":
-        # Vagues hélicoïdales douces : dépend de l'angle ET de la hauteur
-        offset = amplitude_mm * 0.85 * np.sin(
-            2.0 * angles + 2.0 * np.pi * base_frequency * 0.45 * z_ratio
+    elif texture_type == "Anneaux":
+        offset = amplitude_mm * np.sin(
+            2.0 * np.pi * (base_frequency * 1.4) * z_ratio
+        ) * np.ones_like(radii)
+
+    elif texture_type == "Spirale":
+        offset = amplitude_mm * np.sin(
+            angles + 2.0 * np.pi * (base_frequency * 0.24) * z_ratio
         )
 
-    elif texture_type == "Torsade":
-        # Relief tournant continu, plus dense et plus torsadé que Spirale
+    elif texture_type == "Double spirale":
         offset = amplitude_mm * np.sin(
-            base_frequency * angles + 2.0 * np.pi * 3.6 * z_ratio
+            2.0 * angles + 2.0 * np.pi * (base_frequency * 0.24) * z_ratio
         )
+
+    elif texture_type == "Bulles":
+        offset = amplitude_mm * (
+            np.exp(
+                -(
+                    2.4 * np.sin(base_frequency * angles) ** 2
+                    + 2.0 * np.sin(2.0 * np.pi * max(2.0, base_frequency * 0.55) * z_ratio) ** 2
+                )
+            ) - 0.35
+        )
+
+    elif texture_type == "Hexagones":
+        cell = np.sin(base_frequency * angles) * np.sin(
+            2.0 * np.pi * max(2.0, base_frequency * 0.60) * z_ratio
+        )
+        quantized = np.round(cell * 3.0) / 3.0
+        offset = amplitude_mm * quantized
+
+    elif texture_type == "LowPoly":
+        step = (2.0 * np.pi) / max(6, int(round(base_frequency)))
+        angle_quant = np.round(angles / step) * step
+        offset = amplitude_mm * np.cos(angle_quant * max(3.0, base_frequency * 0.65))
 
     elif texture_type == "Martelé":
         offset = amplitude_mm * (
@@ -167,30 +192,19 @@ def _apply_texture_to_contour(
             + 0.15 * np.cos(13.1 * angles + 2.0 * np.pi * 4.2 * z_ratio)
         )
 
-    elif texture_type == "Facettes":
-        # Marches anguleuses nettes
-        offset = amplitude_mm * np.sign(np.sin(base_frequency * angles + np.pi / 8.0))
-
-    elif texture_type == "Anneaux":
-        # Relief purement horizontal : indépendant de l'angle
-        offset = amplitude_mm * np.sin(
-            2.0 * np.pi * (base_frequency * 1.35) * z_ratio
-        ) * np.ones_like(radii)
-
-    elif texture_type == "Écailles":
-        offset = amplitude_mm * (
-            np.maximum(0.0, np.sin(base_frequency * angles)) *
-            np.sin(2.0 * np.pi * max(2.0, base_frequency * 0.60) * z_ratio)
-        )
-
-    elif texture_type == "Spirale":
-        # Une seule grande onde qui grimpe, beaucoup plus lisible que Torsade
-        offset = amplitude_mm * np.sin(
-            angles + 2.0 * np.pi * base_frequency * 0.22 * z_ratio
-        )
-
     else:
         return pts
+
+    max_safe_offset = np.maximum(0.35, radii - params.wall_thickness_mm - 0.8)
+    offset = np.clip(offset, -0.90 * max_safe_offset, 0.90 * max_safe_offset)
+
+    new_radii = np.maximum(radii + offset, params.wall_thickness_mm + 0.8)
+    scale = new_radii / safe_radii
+
+    pts[:, 0] *= scale
+    pts[:, 1] *= scale
+
+    return pts
 
     max_safe_offset = np.maximum(0.2, radii - params.wall_thickness_mm - 0.6)
     offset = np.clip(offset, -0.85 * max_safe_offset, 0.85 * max_safe_offset)

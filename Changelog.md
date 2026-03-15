@@ -7,6 +7,13 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [0.3.4] - 2026-03-15
+
+### Ajouté
+
+ - Modification des textures en s'inspirant de vase trouvés sur @
+
+
 ## [0.3.3] - 2026-03-15
 
 ### Ajouté

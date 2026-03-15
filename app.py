@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.3.3"
+APP_VERSION = "0.3.4"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -175,13 +175,13 @@ RANDOM_STYLE_RULES = {
 TEXTURE_TYPE_NAMES = [
     "Pas de texture",
     "Cannelures",
-    "Ondulations",
-    "Torsade",
-    "Martelé",
-    "Facettes",
     "Anneaux",
-    "Écailles",
     "Spirale",
+    "Double spirale",
+    "Bulles",
+    "Hexagones",
+    "LowPoly",
+    "Martelé",
 ]
 
 TEXTURE_ZOOM_NAMES = [
@@ -451,8 +451,8 @@ def build_preview_params(params: VaseParameters) -> VaseParameters:
         height_mm=params.height_mm,
         wall_thickness_mm=params.wall_thickness_mm,
         bottom_thickness_mm=params.bottom_thickness_mm,
-        radial_samples=min(params.radial_samples, 96),
-        vertical_samples=min(params.vertical_samples, 96),
+        radial_samples=min(params.radial_samples, 120),
+        vertical_samples=min(params.vertical_samples, 120),
         open_top=params.open_top,
         close_bottom=params.close_bottom,
         texture_type=params.texture_type,
