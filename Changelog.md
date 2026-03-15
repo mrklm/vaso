@@ -7,11 +7,18 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [0.2.14] — 2026-03-15
+
+### Modifié
+
+ - Indications "style de vase" reduites
+
+
 ## [0.2.13] — 2026-03-15
 
 ### Modifié
 
- - Indication "style de vase" reduites
+ - Indications "style de vase" reduites
 
 
 ## [0.2.12] — 2026-03-15

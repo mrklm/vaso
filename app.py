@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.2.13"
+APP_VERSION = "0.2.14"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -873,7 +873,7 @@ def main() -> None:
 
     ttk.Label(
         shape_form_tab,
-        text="Le profil 1 doit être à 0 % et le dernier profil utilisé à 100 %.",
+        text="Le profil 1 = à 0 % et le dernier profil = 100 %.",
         style="Vaso.TLabel",
         justify="left",
     ).grid(row=1, column=0, sticky="w", pady=(8, 2))
