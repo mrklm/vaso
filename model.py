@@ -26,4 +26,7 @@ class VaseParameters:
     open_top: bool = True
     close_bottom: bool = True
 
+    texture_type: str = "Pas de texture"
+    texture_zoom: str = "Moyen"
+
     profiles: List[Profile] = field(default_factory=list)

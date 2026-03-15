@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.3.1"
+APP_VERSION = "0.3.2"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -451,10 +451,12 @@ def build_preview_params(params: VaseParameters) -> VaseParameters:
         height_mm=params.height_mm,
         wall_thickness_mm=params.wall_thickness_mm,
         bottom_thickness_mm=params.bottom_thickness_mm,
-        radial_samples=min(params.radial_samples, 40),
-        vertical_samples=min(params.vertical_samples, 48),
+        radial_samples=min(params.radial_samples, 72),
+        vertical_samples=min(params.vertical_samples, 72),
         open_top=params.open_top,
         close_bottom=params.close_bottom,
+        texture_type=params.texture_type,
+        texture_zoom=params.texture_zoom,
         profiles=[
             Profile(
                 z_ratio=p.z_ratio,

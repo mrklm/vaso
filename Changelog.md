@@ -7,6 +7,13 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [0.3.2] - 2026-03-15
+
+### Ajouté
+
+ - Branchement des combobox de textures
+
+
 ## [0.3.1] - 2026-03-15
 
 ### Ajouté
