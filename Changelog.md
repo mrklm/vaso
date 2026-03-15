@@ -7,6 +7,12 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [0.3.10] - 2026-03-15
+
+### Ajouté
+
+ - Case à cocher + combobox pour le niveau de complexité
+
 ## [0.3.9] - 2026-03-15
 
 ### Modifié

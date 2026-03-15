@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.3.9"
+APP_VERSION = "0.3.10"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -201,6 +201,39 @@ PREVIEW_3D_MODE_NAMES = [
     "Normal",
     "Relief renforcé",
 ]
+
+RANDOM_COMPLEXITY_NAMES = [
+    "Sobre",
+    "Moyen",
+    "Complexe",
+]
+
+RANDOM_COMPLEXITY_RULES = {
+    "Sobre": {
+        "height_ratio_min": 0.34,
+        "height_ratio_mode": 0.50,
+        "height_ratio_max": 0.72,
+        "profile_min": 3,
+        "profile_mode": 4,
+        "profile_max": 5,
+    },
+    "Moyen": {
+        "height_ratio_min": 0.46,
+        "height_ratio_mode": 0.63,
+        "height_ratio_max": 0.84,
+        "profile_min": 4,
+        "profile_mode": 5,
+        "profile_max": 7,
+    },
+    "Complexe": {
+        "height_ratio_min": 0.58,
+        "height_ratio_mode": 0.76,
+        "height_ratio_max": 0.96,
+        "profile_min": 6,
+        "profile_mode": 7,
+        "profile_max": 10,
+    },
+}
 
 
 def get_settings_path(base_dir: Path) -> Path:
@@ -571,6 +604,18 @@ def apply_theme(
         focuscolor=accent,
         padding=6,
     )
+
+    style.configure(
+        "Vaso.TCheckbutton",
+        background=bg,
+        foreground=fg,
+    )
+    style.map(
+        "Vaso.TCheckbutton",
+        background=[("active", bg)],
+        foreground=[("active", fg)],
+    )
+
     style.map(
         "Vaso.TButton",
         background=[("active", accent), ("pressed", accent)],
@@ -815,6 +860,8 @@ def main() -> None:
     random_style_sides_var = tk.StringVar(value="3-12")
     random_style_rot_var = tk.StringVar(value="0-90")
     random_style_shape_var = tk.StringVar(value="X")
+    random_complexity_enabled_var = tk.BooleanVar(value=False)
+    random_complexity_var = tk.StringVar(value="Moyen")
 
     printer_profile_var = tk.StringVar(value=active_printer_profile["name"])
     build_width_max_var = tk.StringVar(value=f'{active_printer_profile["width"]:.1f}'.rstrip("0").rstrip("."))
@@ -1108,28 +1155,47 @@ def main() -> None:
     )
     random_style_combo.grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 8))
 
-    ttk.Label(random_style_tab, text="Plage", style="Vaso.TLabel").grid(row=2, column=1, sticky="w", padx=(8, 0), pady=(0, 4))
-    ttk.Label(random_style_tab, text="Profils", style="Vaso.TLabel").grid(row=3, column=0, sticky="w", pady=2)
-    ttk.Label(random_style_tab, textvariable=random_style_profiles_var, width=8, style="Vaso.TLabel").grid(row=3, column=1, sticky="w", padx=(8, 0), pady=2)
+    random_complexity_check = ttk.Checkbutton(
+        random_style_tab,
+        text="Forcer la complexité",
+        variable=random_complexity_enabled_var,
+        style="Vaso.TCheckbutton",
+        command=lambda: update_random_complexity_state(),
+    )
+    random_complexity_check.grid(row=2, column=0, columnspan=2, sticky="w", pady=(2, 4))
 
-    ttk.Label(random_style_tab, text="Δ diam.", style="Vaso.TLabel").grid(row=4, column=0, sticky="w", pady=2)
-    ttk.Label(random_style_tab, textvariable=random_style_diam_delta_var, width=8, style="Vaso.TLabel").grid(row=4, column=1, sticky="w", padx=(8, 0), pady=2)
+    random_complexity_combo = ttk.Combobox(
+        random_style_tab,
+        textvariable=random_complexity_var,
+        values=RANDOM_COMPLEXITY_NAMES,
+        state="readonly",
+        width=18,
+        style="Vaso.TCombobox",
+    )
+    random_complexity_combo.grid(row=3, column=0, columnspan=2, sticky="w", pady=(0, 8))
 
-    ttk.Label(random_style_tab, text="Côtés", style="Vaso.TLabel").grid(row=5, column=0, sticky="w", pady=2)
-    ttk.Label(random_style_tab, textvariable=random_style_sides_var, width=8, style="Vaso.TLabel").grid(row=5, column=1, sticky="w", padx=(8, 0), pady=2)
+    ttk.Label(random_style_tab, text="Plage", style="Vaso.TLabel").grid(row=4, column=1, sticky="w", padx=(8, 0), pady=(0, 4))
+    ttk.Label(random_style_tab, text="Profils", style="Vaso.TLabel").grid(row=5, column=0, sticky="w", pady=2)
+    ttk.Label(random_style_tab, textvariable=random_style_profiles_var, width=8, style="Vaso.TLabel").grid(row=5, column=1, sticky="w", padx=(8, 0), pady=2)
 
-    ttk.Label(random_style_tab, text="Rot.", style="Vaso.TLabel").grid(row=6, column=0, sticky="w", pady=2)
-    ttk.Label(random_style_tab, textvariable=random_style_rot_var, width=8, style="Vaso.TLabel").grid(row=6, column=1, sticky="w", padx=(8, 0), pady=2)
+    ttk.Label(random_style_tab, text="Δ diam.", style="Vaso.TLabel").grid(row=6, column=0, sticky="w", pady=2)
+    ttk.Label(random_style_tab, textvariable=random_style_diam_delta_var, width=8, style="Vaso.TLabel").grid(row=6, column=1, sticky="w", padx=(8, 0), pady=2)
 
-    ttk.Label(random_style_tab, text="Forme", style="Vaso.TLabel").grid(row=7, column=0, sticky="w", pady=2)
-    ttk.Label(random_style_tab, textvariable=random_style_shape_var, width=8, style="Vaso.TLabel").grid(row=7, column=1, sticky="w", padx=(8, 0), pady=2)
+    ttk.Label(random_style_tab, text="Côtés", style="Vaso.TLabel").grid(row=7, column=0, sticky="w", pady=2)
+    ttk.Label(random_style_tab, textvariable=random_style_sides_var, width=8, style="Vaso.TLabel").grid(row=7, column=1, sticky="w", padx=(8, 0), pady=2)
+
+    ttk.Label(random_style_tab, text="Rot.", style="Vaso.TLabel").grid(row=8, column=0, sticky="w", pady=2)
+    ttk.Label(random_style_tab, textvariable=random_style_rot_var, width=8, style="Vaso.TLabel").grid(row=8, column=1, sticky="w", padx=(8, 0), pady=2)
+
+    ttk.Label(random_style_tab, text="Forme", style="Vaso.TLabel").grid(row=9, column=0, sticky="w", pady=2)
+    ttk.Label(random_style_tab, textvariable=random_style_shape_var, width=8, style="Vaso.TLabel").grid(row=9, column=1, sticky="w", padx=(8, 0), pady=2)
 
     ttk.Label(
         random_style_tab,
         text="X = libre / non borné",
         style="Vaso.TLabel",
         justify="left",
-    ).grid(row=8, column=0, columnspan=2, sticky="w", pady=(8, 0))
+    ).grid(row=10, column=0, columnspan=2, sticky="w", pady=(8, 0))
 
     def update_profile_fields_state(event=None) -> None:
         try:
@@ -1176,6 +1242,12 @@ def main() -> None:
         random_style_sides_var.set(rules["sides"])
         random_style_rot_var.set(rules["rot"])
         random_style_shape_var.set(rules["shape"])
+
+    def update_random_complexity_state() -> None:
+        if random_complexity_enabled_var.get():
+            random_complexity_combo.configure(state="readonly")
+        else:
+            random_complexity_combo.configure(state="disabled")        
 
     def on_texture_controls_change(event=None) -> None:
         try:
@@ -1765,170 +1837,195 @@ def main() -> None:
         style_name = random_style_var.get()
         rules = get_random_style_rules(style_name)
 
+        if random_complexity_enabled_var.get():
+            complexity_name = random_complexity_var.get()
+        else:
+            complexity_name = rng.choices(
+                RANDOM_COMPLEXITY_NAMES,
+                weights=[4, 4, 2],
+                k=1,
+            )[0]
+
+        complexity = RANDOM_COMPLEXITY_RULES.get(
+            complexity_name,
+            RANDOM_COMPLEXITY_RULES["Moyen"],
+        )
+
         if style_name == "Pur aléatoire":
-            profile_count = rng.randint(3, 10)
+            style_profile_min, style_profile_max = 3, 10
             delta_min, delta_max = None, None
             sides_min, sides_max = 3, 12
             rot_min, rot_max = 0, 90
             z_pool_start, z_pool_end = 8, 99
         elif style_name == "Forme douce":
-            profile_count = rng.randint(5, 10)
+            style_profile_min, style_profile_max = 5, 10
             delta_min, delta_max = 4, 12
             sides_min, sides_max = 5, 9
             rot_min, rot_max = 0, 28
             z_pool_start, z_pool_end = 10, 97
         elif style_name == "Forme brute":
-            profile_count = rng.randint(3, 8)
+            style_profile_min, style_profile_max = 3, 8
             delta_min, delta_max = 18, 42
             sides_min, sides_max = 3, 12
             rot_min, rot_max = 0, 90
             z_pool_start, z_pool_end = 8, 99
         elif style_name == "Forme torsadée":
-            profile_count = rng.randint(5, 10)
+            style_profile_min, style_profile_max = 5, 10
             delta_min, delta_max = 6, 16
             sides_min, sides_max = 4, 8
             rot_min, rot_max = 12, 90
             z_pool_start, z_pool_end = 10, 98
         elif style_name == "Architecturée":
-            profile_count = rng.randint(3, 6)
+            style_profile_min, style_profile_max = 3, 6
             delta_min, delta_max = 10, 24
             sides_min, sides_max = 4, 8
             rot_min, rot_max = 0, 24
             z_pool_start, z_pool_end = 14, 96
         elif style_name == "Organique":
-            profile_count = rng.randint(6, 10)
+            style_profile_min, style_profile_max = 6, 10
             delta_min, delta_max = 8, 18
             sides_min, sides_max = 5, 9
             rot_min, rot_max = 0, 36
             z_pool_start, z_pool_end = 10, 98
         elif style_name == "Fuselée":
-            profile_count = rng.randint(4, 8)
+            style_profile_min, style_profile_max = 4, 8
             delta_min, delta_max = 6, 18
             sides_min, sides_max = 4, 8
             rot_min, rot_max = 0, 30
             z_pool_start, z_pool_end = 12, 98
         elif style_name == "Bulbeuse":
-            profile_count = rng.randint(4, 8)
+            style_profile_min, style_profile_max = 4, 8
             delta_min, delta_max = 10, 28
             sides_min, sides_max = 4, 9
             rot_min, rot_max = 0, 32
             z_pool_start, z_pool_end = 12, 98
         else:
-            profile_count = rng.randint(3, 10)
+            style_profile_min, style_profile_max = 3, 10
             delta_min, delta_max = None, None
             sides_min, sides_max = 3, 12
             rot_min, rot_max = 0, 90
             z_pool_start, z_pool_end = 8, 99
 
-        height_upper = max(120, int(height_max))
-        height_lower = min(120, height_upper)
-        height = rng.randint(height_lower, height_upper)
+        profile_min = max(style_profile_min, complexity["profile_min"])
+        profile_max = min(style_profile_max, complexity["profile_max"])
+
+        if profile_min > profile_max:
+            profile_min = style_profile_min
+            profile_max = style_profile_max
+
+        profile_mode = min(
+            profile_max,
+            max(profile_min, complexity["profile_mode"]),
+        )
+
+        profile_count = int(round(rng.triangular(profile_min, profile_max, profile_mode)))
+        profile_count = max(3, min(10, profile_count))
+
+        profile_count_var.set(str(profile_count))
+
+        height_max_int = max(60, int(height_max))
+        height_ratio_min = complexity["height_ratio_min"]
+        height_ratio_mode = complexity["height_ratio_mode"]
+        height_ratio_max = complexity["height_ratio_max"]
+
+        height_min = max(60, int(round(height_max_int * height_ratio_min)))
+        height_mode = max(height_min, int(round(height_max_int * height_ratio_mode)))
+        height_upper = max(height_min, int(round(height_max_int * height_ratio_max)))
+
+        height = int(round(rng.triangular(height_min, height_upper, height_mode)))
+        height = max(60, min(height_max_int, height))
 
         wall = round(rng.uniform(2.0, 3.6), 1)
         bottom = round(rng.uniform(max(wall, 2.5), 6.0), 1)
 
-        radial = rng.choice([48, 72, 96])
-        vertical = rng.choice([72, 96, 120])
+        radial = rng.choice([72, 84, 96, 108, 120])
+        vertical = max(64, min(180, int(height * rng.uniform(0.45, 0.75))))
 
         height_var.set(str(height))
         wall_var.set(f"{wall:.1f}")
         bottom_var.set(f"{bottom:.1f}")
         radial_var.set(str(radial))
         vertical_var.set(str(vertical))
-        profile_count_var.set(str(profile_count))
 
-        texture_type_var.set(rng.choice(TEXTURE_TYPE_NAMES))
-        texture_zoom_var.set(rng.choice(TEXTURE_ZOOM_NAMES))
+        min_diameter = 24
+        max_diameter = max(min_diameter + 8, int(usable_diameter_max * 0.78))
 
-        active_z_values = sorted(rng.sample(range(z_pool_start, z_pool_end), profile_count - 2))
-        active_z_values = [0] + active_z_values + [100]
-
-        max_diameter = int(usable_diameter_max * 0.92)
-        min_diameter = 20
-
-        if style_name == "Fuselée":
-            base_diameter = rng.randint(max(40, int(max_diameter * 0.55)), max(45, int(max_diameter * 0.82)))
-        elif style_name == "Bulbeuse":
-            base_diameter = rng.randint(max(28, int(max_diameter * 0.35)), max(34, int(max_diameter * 0.55)))
+        if profile_count == 3:
+            active_z_values = [0, rng.randint(35, 65), 100]
         else:
-            base_diameter = rng.randint(25, max(30, int(usable_diameter_max * 0.55)))
+            inner_count = profile_count - 2
+            z_candidates = list(range(z_pool_start, z_pool_end))
+            selected = sorted(rng.sample(z_candidates, inner_count))
+            active_z_values = [0] + selected + [100]
+
+        base_diameter = rng.randint(
+            max(min_diameter, int(max_diameter * 0.34)),
+            max(min_diameter + 6, int(max_diameter * 0.52)),
+        )
 
         diameters: list[int] = []
         sides_values: list[int] = []
         rotations: list[int] = []
 
-        current_diameter = base_diameter
         current_sides = rng.randint(sides_min, sides_max)
 
         for i in range(profile_count):
             if style_name == "Pur aléatoire":
                 diameter = rng.randint(min_diameter, max_diameter)
-                sides = rng.randint(sides_min, sides_max)
-                rotation = rng.randint(rot_min, rot_max)
+                sides = rng.randint(3, 12)
+                rotation = 0 if i == 0 else rng.randint(rot_min, rot_max)
 
             elif style_name == "Forme douce":
-                if i == 0:
-                    diameter = current_diameter
-                else:
-                    delta = rng.randint(delta_min, delta_max)
-                    direction = rng.choice([-1, 1])
-                    diameter = max(min_diameter, min(max_diameter, current_diameter + direction * delta))
-                current_diameter = diameter
-
-                if i == 0:
-                    sides = current_sides
-                else:
-                    sides = max(sides_min, min(sides_max, current_sides + rng.choice([-1, 0, 1])))
-                current_sides = sides
-
-                rotation = 0 if i == 0 else min(rot_max, max(rot_min, rotations[-1] + rng.randint(0, 8)))
-
-            elif style_name == "Forme brute":
-                if i == 0:
-                    diameter = current_diameter
-                else:
-                    delta = rng.randint(delta_min, delta_max)
-                    direction = rng.choice([-1, 1])
-                    diameter = max(min_diameter, min(max_diameter, current_diameter + direction * delta))
-                current_diameter = diameter
-                sides = rng.randint(sides_min, sides_max)
-                rotation = rng.randint(rot_min, rot_max)
-
-            elif style_name == "Forme torsadée":
-                if i == 0:
-                    diameter = current_diameter
-                else:
-                    delta = rng.randint(delta_min, delta_max)
-                    direction = rng.choice([-1, 1])
-                    diameter = max(min_diameter, min(max_diameter, current_diameter + direction * delta))
-                current_diameter = diameter
+                phase = i / max(1, profile_count - 1)
+                curve = np.sin(phase * np.pi)
+                target = int(base_diameter + curve * rng.randint(18, 34))
+                jitter = rng.randint(-delta_max, delta_max)
+                diameter = max(min_diameter, min(max_diameter, target + jitter))
                 sides = current_sides if i == 0 else max(sides_min, min(sides_max, current_sides + rng.choice([0, 0, 1, -1])))
                 current_sides = sides
-                step = rng.randint(8, 18)
-                rotation = rot_min if i == 0 else min(rot_max, rotations[-1] + step)
+                rotation = 0 if i == 0 else min(rot_max, max(rot_min, rotations[-1] + rng.randint(0, 4)))
+
+            elif style_name == "Forme brute":
+                target = rng.randint(min_diameter, max_diameter)
+                jitter = rng.randint(-delta_max, delta_max)
+                diameter = max(min_diameter, min(max_diameter, target + jitter))
+                sides = rng.randint(sides_min, sides_max)
+                rotation = 0 if i == 0 else rng.randint(rot_min, rot_max)
+
+            elif style_name == "Forme torsadée":
+                phase = i / max(1, profile_count - 1)
+                curve = np.sin(phase * np.pi)
+                target = int(base_diameter + curve * rng.randint(14, 30))
+                jitter = rng.randint(-delta_max, delta_max)
+                diameter = max(min_diameter, min(max_diameter, target + jitter))
+                sides = current_sides if i == 0 else max(sides_min, min(sides_max, current_sides + rng.choice([0, 0, 1, -1])))
+                current_sides = sides
+                rotation = 0 if i == 0 else min(rot_max, max(rot_min, rotations[-1] + rng.randint(8, 18)))
 
             elif style_name == "Architecturée":
-                anchors = [0, profile_count // 2, profile_count - 1]
-                if i in anchors:
-                    diameter = rng.randint(max(28, int(max_diameter * 0.35)), max_diameter)
-                else:
-                    diameter = diameters[-1]
-                sides = rng.randint(sides_min, sides_max)
-                rotation = rng.randint(rot_min, rot_max)
+                phase = i / max(1, profile_count - 1)
+                band = 1.0 if phase < 0.34 else (0.72 if phase < 0.67 else 0.90)
+                target = int(base_diameter * band + rng.randint(8, 18))
+                jitter = rng.randint(-delta_max, delta_max)
+                diameter = max(min_diameter, min(max_diameter, target + jitter))
+                sides = current_sides if i == 0 else max(sides_min, min(sides_max, current_sides + rng.choice([0, 1, -1])))
+                current_sides = sides
+                rotation = 0 if i == 0 else min(rot_max, max(rot_min, rotations[-1] + rng.randint(0, 6)))
 
             elif style_name == "Organique":
                 phase = i / max(1, profile_count - 1)
                 wave = np.sin(phase * np.pi)
-                center = int(min_diameter + (max_diameter - min_diameter) * (0.40 + 0.35 * wave))
+                target = int(base_diameter + wave * rng.randint(22, 40))
                 jitter = rng.randint(-delta_max, delta_max)
-                diameter = max(min_diameter, min(max_diameter, center + jitter))
-                sides = current_sides if i == 0 else max(sides_min, min(sides_max, current_sides + rng.choice([-1, 0, 1])))
+                diameter = max(min_diameter, min(max_diameter, target + jitter))
+                sides = current_sides if i == 0 else max(sides_min, min(sides_max, current_sides + rng.choice([0, 0, 1, -1])))
                 current_sides = sides
-                rotation = 0 if i == 0 else min(rot_max, max(rot_min, rotations[-1] + rng.randint(0, 10)))
+                rotation = 0 if i == 0 else min(rot_max, max(rot_min, rotations[-1] + rng.randint(0, 7)))
 
             elif style_name == "Fuselée":
                 phase = i / max(1, profile_count - 1)
-                target = int(base_diameter - phase * rng.randint(18, 40))
+                taper = 1.0 - 0.55 * phase
+                target = int(base_diameter * taper + rng.randint(16, 38))
                 jitter = rng.randint(-delta_max, delta_max)
                 diameter = max(min_diameter, min(max_diameter, target + jitter))
                 sides = current_sides if i == 0 else max(sides_min, min(sides_max, current_sides + rng.choice([0, 0, 1, -1])))
@@ -1948,7 +2045,7 @@ def main() -> None:
             else:
                 diameter = rng.randint(min_diameter, max_diameter)
                 sides = rng.randint(3, 12)
-                rotation = rng.randint(0, 90)
+                rotation = 0 if i == 0 else rng.randint(0, 90)
 
             diameters.append(int(diameter))
             sides_values.append(int(sides))
@@ -1967,8 +2064,6 @@ def main() -> None:
             rotation_vars[i].set("X")
 
         update_profile_fields_state()
-
-
 
     def build_current_params() -> VaseParameters:
         params = build_params_from_ui(
@@ -2120,6 +2215,7 @@ def main() -> None:
     printer_profile_var.set(active_printer_profile["name"])
     update_profile_fields_state()
     update_random_style_info()
+    update_random_complexity_state()
 
 
     try:

@@ -119,6 +119,7 @@ def _texture_zoom_to_params(texture_zoom: str) -> tuple[float, float]:
         "Moyen": (3.0, 9.0),
         "Gros": (4.4, 5.5),
         "Très gros": (6.0, 3.2),
+        "Enorme": (14.0, 2.4),
     }
     return mapping.get(texture_zoom, mapping["Moyen"])
 
@@ -162,8 +163,14 @@ def _apply_texture_to_contour(
         )
 
     elif texture_type == "Double spirale":
-        offset = amplitude_mm * envelope * np.sin(
-            2.0 * angles + 2.0 * np.pi * (base_frequency * 0.26) * z_ratio
+
+        spiral_speed = base_frequency * 0.12
+
+        amp = amplitude_mm * (0.4 + 0.6 * z_ratio)
+
+        offset = amp * np.sin(
+            2.0 * angles +
+            2.0 * np.pi * spiral_speed * z_ratio
         )
 
     elif texture_type == "Triple spirale":
