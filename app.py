@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.3.5"
+APP_VERSION = "0.3.6"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 

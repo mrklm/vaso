@@ -109,6 +109,9 @@ def _interpolate_contours(c1: np.ndarray, c2: np.ndarray, t: float) -> np.ndarra
     return (1.0 - t) * c1 + t * c2
 
 
+SUPPORTLESS_MAX_OVERHANG_DEG = 42.0
+
+
 def _texture_zoom_to_params(texture_zoom: str) -> tuple[float, float]:
     mapping = {
         "Très fin": (1.0, 22.0),
@@ -167,7 +170,9 @@ def _apply_texture_to_contour(
         bubble_field = np.exp(
             -(
                 2.8 * np.sin(base_frequency * angles) ** 2
-                + 2.2 * np.sin(2.0 * np.pi * max(2.0, base_frequency * 0.62) * z_ratio) ** 2
+                + 2.2 * np.sin(
+                    2.0 * np.pi * max(2.0, base_frequency * 0.62) * z_ratio
+                ) ** 2
             )
         )
         offset = amplitude_mm * envelope * (bubble_field - 0.30)
@@ -208,16 +213,40 @@ def _apply_texture_to_contour(
 
     return pts
 
-    max_safe_offset = np.maximum(0.2, radii - params.wall_thickness_mm - 0.6)
-    offset = np.clip(offset, -0.85 * max_safe_offset, 0.85 * max_safe_offset)
 
-    new_radii = np.maximum(radii + offset, params.wall_thickness_mm + 0.6)
-    scale = new_radii / safe_radii
+def _max_supportless_radial_step(dz_mm: float) -> float:
+    return max(
+        0.25,
+        float(dz_mm) * np.tan(np.radians(SUPPORTLESS_MAX_OVERHANG_DEG)),
+    )
 
-    pts[:, 0] *= scale
-    pts[:, 1] *= scale
 
-    return pts
+def _limit_contour_step_from_previous(
+    previous_contour: np.ndarray,
+    current_contour: np.ndarray,
+    max_radial_step_mm: float,
+    wall_thickness_mm: float,
+) -> np.ndarray:
+    prev = np.asarray(previous_contour, dtype=float)
+    curr = np.asarray(current_contour, dtype=float).copy()
+
+    prev_radii = np.linalg.norm(prev, axis=1)
+    curr_radii = np.linalg.norm(curr, axis=1)
+    safe_curr_radii = np.maximum(curr_radii, 1e-9)
+
+    lower_bound = np.maximum(
+        wall_thickness_mm + 1.0,
+        prev_radii - max_radial_step_mm,
+    )
+    upper_bound = prev_radii + max_radial_step_mm
+
+    clamped_radii = np.clip(curr_radii, lower_bound, upper_bound)
+    scale = clamped_radii / safe_curr_radii
+
+    curr[:, 0] *= scale
+    curr[:, 1] *= scale
+
+    return curr
 
 
 def _interpolated_outer_contour(params: VaseParameters, z_mm: float) -> np.ndarray:
@@ -246,6 +275,35 @@ def _interpolated_outer_contour(params: VaseParameters, z_mm: float) -> np.ndarr
 
     contour = contours[-1].copy()
     return _apply_texture_to_contour(contour, z_mm, params)
+
+
+def _generate_support_safe_outer_contours(
+    params: VaseParameters,
+    z_values: np.ndarray,
+) -> list[np.ndarray]:
+    contours: list[np.ndarray] = []
+
+    previous_contour: np.ndarray | None = None
+    previous_z_mm: float | None = None
+
+    for z_mm in z_values:
+        contour = _interpolated_outer_contour(params, float(z_mm))
+
+        if previous_contour is not None and previous_z_mm is not None:
+            dz_mm = abs(float(z_mm) - previous_z_mm)
+            max_radial_step_mm = _max_supportless_radial_step(dz_mm)
+            contour = _limit_contour_step_from_previous(
+                previous_contour=previous_contour,
+                current_contour=contour,
+                max_radial_step_mm=max_radial_step_mm,
+                wall_thickness_mm=params.wall_thickness_mm,
+            )
+
+        contours.append(contour)
+        previous_contour = contour
+        previous_z_mm = float(z_mm)
+
+    return contours
 
 
 def _compute_inner_contour(
@@ -344,11 +402,13 @@ def generate_vase_mesh(params: VaseParameters):
     outer_ring_starts = []
     inner_ring_starts = []
 
+    outer_contours = _generate_support_safe_outer_contours(params, z_outer)
+    inner_source_contours = _generate_support_safe_outer_contours(params, z_inner)
+
     # ---------------------------
     # Paroi extérieure
     # ---------------------------
-    for z_mm in z_outer:
-        contour = _interpolated_outer_contour(params, z_mm)
+    for z_mm, contour in zip(z_outer, outer_contours):
         ring_start = len(vertices)
         _append_ring_vertices(vertices, contour, z_mm)
         outer_ring_starts.append(ring_start)
@@ -356,8 +416,7 @@ def generate_vase_mesh(params: VaseParameters):
     # ---------------------------
     # Paroi intérieure
     # ---------------------------
-    for z_mm in z_inner:
-        outer_contour = _interpolated_outer_contour(params, z_mm)
+    for z_mm, outer_contour in zip(z_inner, inner_source_contours):
         inner_contour = _compute_inner_contour(outer_contour, params.wall_thickness_mm)
         ring_start = len(vertices)
         _append_ring_vertices(vertices, inner_contour, z_mm)
@@ -430,7 +489,6 @@ def generate_vase_mesh(params: VaseParameters):
             invert=True,
         )
 
-
     vertices = np.asarray(vertices, dtype=float)
     faces = np.asarray(faces, dtype=int)
 
@@ -444,10 +502,10 @@ def generate_outer_profile_points(
     _validate_params(params)
 
     z_values = np.linspace(0.0, params.height_mm, samples_z)
-    radius_values = []
+    contours = _generate_support_safe_outer_contours(params, z_values)
 
-    for z_mm in z_values:
-        contour = _interpolated_outer_contour(params, z_mm)
+    radius_values = []
+    for contour in contours:
         radii = np.linalg.norm(contour, axis=1)
         radius_values.append(float(np.max(radii)))
 
@@ -456,5 +514,8 @@ def generate_outer_profile_points(
 
 def generate_top_outer_contour(params: VaseParameters) -> np.ndarray:
     _validate_params(params)
-    return _interpolated_outer_contour(params, params.height_mm)
+
+    z_values = np.linspace(0.0, params.height_mm, max(2, params.vertical_samples))
+    contours = _generate_support_safe_outer_contours(params, z_values)
+    return contours[-1].copy()
     

@@ -7,6 +7,13 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [0.3.6] - 2026-03-15
+
+### Ajouté
+
+ - Garde fou pour ne pas imprimer dans le vide
+
+
 ## [0.3.5] - 2026-03-15
 
 ### Ajouté
