@@ -1,213 +1,173 @@
+
 # Aide – Vaso
 
 ## Présentation
 
-**Vaso** est un générateur de vases polygonaux paramétriques permettant de créer rapidement des formes originales destinées à l’impression 3D.
+Vaso est un générateur de vases paramétriques pour l’impression 3D.
 
-Le programme permet :
+L’application permet :
+- de créer des vases polygonaux
+- de générer des formes aléatoires
+- de visualiser un aperçu 2D et 3D
+- d’exporter un modèle STL
 
-* de définir la géométrie d’un vase
-* de visualiser un aperçu 2D et 3D
-* de générer des formes aléatoires
-* d’exporter le modèle en **STL**
-
-Les modèles générés peuvent ensuite être ouverts dans un slicer (Cura, PrusaSlicer, etc.) pour l’impression.
-
----
-
-# Onglet Général
-
-L’onglet **Général** est la zone principale de travail.
-
-La fenêtre est organisée en trois zones :
-
-### Gauche
-
-* **Paramètres généraux**
-* **Forme du vase**
-
-### Centre
-
-* **Aperçu 3D**
-
-### Droite
-
-* **Silhouette (vue de profil)**
-* **Vue du haut**
+Les fichiers générés peuvent être ouverts dans Cura, PrusaSlicer ou tout autre slicer.
 
 ---
 
-# Paramètres généraux
+## Organisation de l’interface
 
-Permet de définir les caractéristiques globales du vase :
+La fenêtre principale est composée de :
 
-* **Hauteur (mm)**
-* **Épaisseur des parois (mm)**
-* **Épaisseur du fond (mm)**
-* **Résolution radiale** (qualité circulaire)
-* **Résolution verticale** (qualité en hauteur)
-* **Nombre de profils**
-
-Une résolution plus élevée produit un STL plus détaillé mais aussi plus lourd.
+- Paramètres généraux
+- Profils du vase
+- Aperçu 3D
+- Silhouette
+- Vue du haut
 
 ---
 
-# Forme du vase
+## Paramètres généraux
 
-Le vase est défini par trois profils :
+### Hauteur
+Hauteur totale du vase.
 
-* **Bas**
-* **Milieu**
-* **Haut**
+### Épaisseur coque
+Épaisseur de la paroi latérale.
 
-Pour chaque profil on peut définir :
+### Épaisseur fond
+Épaisseur du fond.
 
-* diamètre
-* nombre de côtés du polygone
-* rotation
+### Résolution circulaire
+Nombre d’échantillons autour du vase.
 
-Le profil central peut être légèrement déplacé verticalement pour créer des formes plus organiques.
+### Résolution verticale
+Nombre d’échantillons sur la hauteur.
 
----
+### Nombre de profils (2‑10)
+Nombre de sections qui définissent la silhouette.
 
-# Aperçu 3D
+- 2 profils : forme très simple
+- plus de profils : formes plus complexes
 
-La zone centrale affiche le modèle en **3D interactif**.
+### Seed
+Permet de reproduire exactement une génération aléatoire.
 
-Fonctionnalités :
+### Style aléatoire
+Famille de formes utilisée pour la génération.
 
-* rotation avec la souris
-* zoom avec la molette
-* rendu ombré
+### Forcer la complexité
+Si activé, le niveau de complexité est imposé.
 
-### Ombrage
+### Complexité
+- Sobre
+- Moyen
+- Complexe
 
-Un curseur **Ombrage** permet d’ajuster l’intensité de l’éclairage du modèle.
+### Forcer la texture
+Si activé, la texture choisie dans l’interface est imposée.
 
-* faible valeur → rendu plus plat
-* valeur élevée → relief plus marqué
+### Texture
+Motif appliqué sur la surface du vase.
 
-Ce réglage n’affecte **que l’aperçu**, pas le STL exporté.
-
----
-
-# Aperçus 2D
-
-Deux vues techniques sont affichées :
-
-### Silhouette
-
-Vue de profil du vase.
-
-### Vue du haut
-
-Vue du contour supérieur du vase.
-
-Ces vues permettent de vérifier rapidement les proportions.
+### Zoom texture
+Échelle du motif.
 
 ---
 
-# Boutons principaux
+## Profils du vase
 
-En bas de la fenêtre :
+Chaque profil définit :
+
+- hauteur (%)
+- diamètre
+- nombre de côtés
+- rotation
+
+Règles importantes :
+
+- le premier profil doit être à **0 %**
+- le dernier profil doit être à **100 %**
+- les hauteurs doivent être croissantes
+
+---
+
+## Aperçu 3D
+
+L’aperçu permet de visualiser le vase avant export.
+
+Le calcul peut être lent selon :
+
+- résolution circulaire
+- résolution verticale
+- complexité de la texture
+- nombre de profils
+
+---
+
+## Boutons
 
 ### Aperçu
-
-Met à jour les aperçus 2D et 3D.
+Met à jour les aperçus.
 
 ### Aléatoire
-
-Génère une nouvelle forme de vase.
-
-La génération respecte les limites du volume d’impression définies dans **Options**.
+Génère un nouveau vase.
 
 ### Générer STL
-
-Crée un fichier STL dans le dossier d’export.
-
----
-
-# Seed
-
-La **seed** permet de reproduire exactement une génération aléatoire.
-
-Exemple :
-
-1. générer un vase aléatoire
-2. noter la seed
-3. réutiliser cette seed pour retrouver exactement la même forme.
+Exporte le modèle.
 
 ---
 
-# Onglet Options
+# Section technique code
 
-L’onglet **Options** contient les paramètres globaux du programme.
+## Architecture
 
----
+Le projet repose sur quatre fichiers principaux :
 
-## Thème
+app.py  
+Interface utilisateur et logique principale
 
-Permet de changer l’apparence graphique de l’application.
+generator.py  
+Génération géométrique et maillage
 
-Le thème est mémorisé entre les sessions.
+model.py  
+Structures de données (profils et paramètres)
 
----
+exporter.py  
+Export STL
 
-## Volume imprimante
+## Pipeline de génération
 
-Définit le volume maximal de l’imprimante :
+1. Lecture des paramètres UI
+2. Construction de VaseParameters
+3. Génération des profils
+4. Construction du maillage
+5. Aperçu 2D / 3D
+6. Export STL
 
-* **Largeur max**
-* **Profondeur max**
-* **Hauteur max**
+## Aperçu 3D
 
-Ces valeurs servent à **contraindre la génération aléatoire** afin que les vases restent imprimables.
+L’aperçu utilise :
 
-Les dimensions saisies n’empêchent pas de définir manuellement un vase plus grand, mais elles limitent la génération automatique.
+- matplotlib
+- Poly3DCollection
+- un maillage simplifié pour accélérer l’affichage
 
----
+## Génération aléatoire
 
-## Export STL
+La génération dépend :
 
-Permet de choisir le dossier d’export des fichiers STL.
+- du style choisi
+- de la complexité
+- de la seed
+- du volume imprimante
 
-Par défaut, les fichiers sont exportés dans un dossier daté sur le Bureau.
+Le nombre de profils peut varier de **2 à 10**.
 
----
+## Notes techniques
 
-# Export STL
-
-Chaque export crée un fichier nommé automatiquement :
-
-```
-vaso_export_0.stl
-vaso_export_1.stl
-vaso_export_2.stl
-```
-
-Les fichiers sont incrémentés pour éviter d’écraser les précédents.
-
----
-
-# Conseils d’impression
-
-Avant impression :
-
-1. ouvrir le STL dans un slicer
-2. vérifier l’échelle
-3. vérifier l’épaisseur des parois
-4. vérifier l’absence d’erreurs de maillage
-
-Pour un vase en **mode vase (spiralize)** dans Cura :
-
-* épaisseur de paroi ≥ largeur de buse
-* fond suffisant (≥ 2 mm recommandé)
-
----
-
-# Remarques
-
-Les formes générées peuvent produire des géométries très variées.
-Il est conseillé de vérifier chaque modèle dans un slicer avant impression.
-
-Vaso est conçu pour **explorer rapidement des formes paramétriques et génératives**.
+- L’aperçu est volontairement moins détaillé que le STL.
+- Les callbacks Tkinter doivent être définis avant utilisation.
+- La validation impose toujours :
+  - premier profil = 0%
+  - dernier profil = 100%

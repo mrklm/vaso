@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.3.10"
+APP_VERSION = "1.0.0"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -115,7 +115,7 @@ RANDOM_STYLE_NAMES = [
 
 RANDOM_STYLE_RULES = {
     "Pur aléatoire": {
-        "profiles": "3-10",
+        "profiles": "2-10",
         "diam_delta": "X",
         "sides": "3-12",
         "rot": "0-90",
@@ -213,8 +213,8 @@ RANDOM_COMPLEXITY_RULES = {
         "height_ratio_min": 0.34,
         "height_ratio_mode": 0.50,
         "height_ratio_max": 0.72,
-        "profile_min": 3,
-        "profile_mode": 4,
+        "profile_min": 2,
+        "profile_mode": 3,
         "profile_max": 5,
     },
     "Moyen": {
@@ -403,8 +403,8 @@ def _build_profiles_from_explicit_ui(
     sides_vars: list[tk.StringVar],
     rotation_vars: list[tk.StringVar],
 ) -> list[Profile]:
-    if profile_count < 3 or profile_count > 10:
-        raise ValueError("Le nombre de profils doit être compris entre 3 et 10.")
+    if profile_count < 2 or profile_count > 10:
+        raise ValueError("Le nombre de profils doit être compris entre 2 et 10.")
 
     profiles: list[Profile] = []
 
@@ -475,8 +475,8 @@ def build_params_from_ui(
     )
 
     profile_count = int(profile_count_var.get())
-    if profile_count < 3 or profile_count > 10:
-        raise ValueError("Le nombre de profils doit être compris entre 3 et 10.")
+    if profile_count < 2 or profile_count > 10:
+        raise ValueError("Le nombre de profils doit être compris entre 2 et 10.")
 
     params.profiles = _build_profiles_from_explicit_ui(
         profile_count=profile_count,
@@ -494,8 +494,8 @@ def build_preview_params(params: VaseParameters) -> VaseParameters:
         height_mm=params.height_mm,
         wall_thickness_mm=params.wall_thickness_mm,
         bottom_thickness_mm=params.bottom_thickness_mm,
-        radial_samples=min(params.radial_samples, 180),
-        vertical_samples=min(params.vertical_samples, 180),
+        radial_samples=min(params.radial_samples, 72),
+        vertical_samples=min(params.vertical_samples, 96),
         open_top=params.open_top,
         close_bottom=params.close_bottom,
         texture_type=params.texture_type,
@@ -855,13 +855,9 @@ def main() -> None:
     shading_var = tk.DoubleVar(value=68.0)
     shading_label_var = tk.StringVar(value="68 %")
 
-    random_style_profiles_var = tk.StringVar(value="3-10")
-    random_style_diam_delta_var = tk.StringVar(value="X")
-    random_style_sides_var = tk.StringVar(value="3-12")
-    random_style_rot_var = tk.StringVar(value="0-90")
-    random_style_shape_var = tk.StringVar(value="X")
     random_complexity_enabled_var = tk.BooleanVar(value=False)
     random_complexity_var = tk.StringVar(value="Moyen")
+    random_texture_enabled_var = tk.BooleanVar(value=False)
 
     printer_profile_var = tk.StringVar(value=active_printer_profile["name"])
     build_width_max_var = tk.StringVar(value=f'{active_printer_profile["width"]:.1f}'.rstrip("0").rstrip("."))
@@ -873,7 +869,7 @@ def main() -> None:
     bottom_var = tk.StringVar(value="3.0")
     radial_var = tk.StringVar(value="96")
     vertical_var = tk.StringVar(value="120")
-    profile_count_var = tk.StringVar(value="3")
+    profile_count_var = tk.StringVar(value="2")
 
     z_ratio_vars = [
         tk.StringVar(value="0"),
@@ -967,20 +963,15 @@ def main() -> None:
 
     general_form_tab = ttk.Frame(left_notebook, style="Vaso.TFrame")
     shape_form_tab = ttk.Frame(left_notebook, style="Vaso.TFrame")
-    random_style_tab = ttk.Frame(left_notebook, style="Vaso.TFrame")
 
     left_notebook.add(general_form_tab, text="Paramètres généraux")
     left_notebook.add(shape_form_tab, text="Profils du vase")
-    left_notebook.add(random_style_tab, text="Style aléatoire")
 
     general_form_tab.columnconfigure(0, weight=0)
     general_form_tab.columnconfigure(1, weight=0)
 
     shape_form_tab.columnconfigure(0, weight=0)
     shape_form_tab.rowconfigure(0, weight=1)
-
-    random_style_tab.columnconfigure(0, weight=0)
-    random_style_tab.columnconfigure(1, weight=0)
 
     preview_3d_frame = ttk.LabelFrame(
         general_tab,
@@ -1033,13 +1024,53 @@ def main() -> None:
     ttk.Label(general_form_tab, text="Résolution verticale", style="Vaso.TLabel").grid(row=4, column=0, sticky="w", pady=4)
     ttk.Entry(general_form_tab, textvariable=vertical_var, width=6, style="Vaso.TEntry").grid(row=4, column=1, sticky="w", pady=4)
 
-    ttk.Label(general_form_tab, text="Nombre de profils (3-10)", style="Vaso.TLabel").grid(row=5, column=0, sticky="w", pady=4)
+    ttk.Label(general_form_tab, text="Nombre de profils (2-10)", style="Vaso.TLabel").grid(row=5, column=0, sticky="w", pady=4)
     ttk.Entry(general_form_tab, textvariable=profile_count_var, width=6, style="Vaso.TEntry").grid(row=5, column=1, sticky="w", pady=4)
 
     ttk.Label(general_form_tab, text="Seed", style="Vaso.TLabel").grid(row=6, column=0, sticky="w", pady=4)
     ttk.Entry(general_form_tab, textvariable=seed_var, width=6, style="Vaso.TEntry").grid(row=6, column=1, sticky="w", pady=4)
 
-    ttk.Label(general_form_tab, text="Texture", style="Vaso.TLabel").grid(row=7, column=0, sticky="w", pady=4)
+    ttk.Label(general_form_tab, text="Style aléatoire", style="Vaso.TLabel").grid(row=7, column=0, sticky="w", pady=4)
+    random_style_combo = ttk.Combobox(
+        general_form_tab,
+        textvariable=random_style_var,
+        values=RANDOM_STYLE_NAMES,
+        state="readonly",
+        width=18,
+        style="Vaso.TCombobox",
+    )
+    random_style_combo.grid(row=7, column=1, sticky="w", pady=4)
+
+    random_complexity_check = ttk.Checkbutton(
+        general_form_tab,
+        text="Forcer la complexité",
+        variable=random_complexity_enabled_var,
+        style="Vaso.TCheckbutton",
+        command=lambda: update_random_complexity_state(),
+    )
+    random_complexity_check.grid(row=8, column=0, columnspan=2, sticky="w", pady=4)
+
+    ttk.Label(general_form_tab, text="Complexité", style="Vaso.TLabel").grid(row=9, column=0, sticky="w", pady=4)
+    random_complexity_combo = ttk.Combobox(
+        general_form_tab,
+        textvariable=random_complexity_var,
+        values=RANDOM_COMPLEXITY_NAMES,
+        state="readonly",
+        width=18,
+        style="Vaso.TCombobox",
+    )
+    random_complexity_combo.grid(row=9, column=1, sticky="w", pady=4)
+
+    random_texture_check = ttk.Checkbutton(
+        general_form_tab,
+        text="Forcer la texture",
+        variable=random_texture_enabled_var,
+        style="Vaso.TCheckbutton",
+        command=lambda: update_random_texture_state(),
+    )
+    random_texture_check.grid(row=10, column=0, columnspan=2, sticky="w", pady=4)
+
+    ttk.Label(general_form_tab, text="Texture", style="Vaso.TLabel").grid(row=11, column=0, sticky="w", pady=4)
     texture_type_combo = ttk.Combobox(
         general_form_tab,
         textvariable=texture_type_var,
@@ -1048,9 +1079,9 @@ def main() -> None:
         width=13,
         style="Vaso.TCombobox",
     )
-    texture_type_combo.grid(row=7, column=1, sticky="w", pady=4)
+    texture_type_combo.grid(row=11, column=1, sticky="w", pady=4)
 
-    ttk.Label(general_form_tab, text="Zoom texture", style="Vaso.TLabel").grid(row=8, column=0, sticky="w", pady=4)
+    ttk.Label(general_form_tab, text="Zoom texture", style="Vaso.TLabel").grid(row=12, column=0, sticky="w", pady=4)
     texture_zoom_combo = ttk.Combobox(
         general_form_tab,
         textvariable=texture_zoom_var,
@@ -1059,7 +1090,7 @@ def main() -> None:
         width=13,
         style="Vaso.TCombobox",
     )
-    texture_zoom_combo.grid(row=8, column=1, sticky="w", pady=4)
+    texture_zoom_combo.grid(row=12, column=1, sticky="w", pady=4)
 
     general_form_tab.columnconfigure(1, weight=0)
 
@@ -1134,7 +1165,7 @@ def main() -> None:
 
     ttk.Label(
         shape_form_tab,
-        text="Les profils doivent avoir des hauteurs croissantes.",
+        text="",
         style="Vaso.TLabel",
         justify="left",
     ).grid(row=2, column=0, sticky="w", pady=(0, 0))
@@ -1144,66 +1175,14 @@ def main() -> None:
     profiles_table_frame.columnconfigure(3, weight=0)
     profiles_table_frame.columnconfigure(4, weight=0)
 
-    ttk.Label(random_style_tab, text="Style", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 4))
-    random_style_combo = ttk.Combobox(
-        random_style_tab,
-        textvariable=random_style_var,
-        values=RANDOM_STYLE_NAMES,
-        state="readonly",
-        width=18,
-        style="Vaso.TCombobox",
-    )
-    random_style_combo.grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 8))
-
-    random_complexity_check = ttk.Checkbutton(
-        random_style_tab,
-        text="Forcer la complexité",
-        variable=random_complexity_enabled_var,
-        style="Vaso.TCheckbutton",
-        command=lambda: update_random_complexity_state(),
-    )
-    random_complexity_check.grid(row=2, column=0, columnspan=2, sticky="w", pady=(2, 4))
-
-    random_complexity_combo = ttk.Combobox(
-        random_style_tab,
-        textvariable=random_complexity_var,
-        values=RANDOM_COMPLEXITY_NAMES,
-        state="readonly",
-        width=18,
-        style="Vaso.TCombobox",
-    )
-    random_complexity_combo.grid(row=3, column=0, columnspan=2, sticky="w", pady=(0, 8))
-
-    ttk.Label(random_style_tab, text="Plage", style="Vaso.TLabel").grid(row=4, column=1, sticky="w", padx=(8, 0), pady=(0, 4))
-    ttk.Label(random_style_tab, text="Profils", style="Vaso.TLabel").grid(row=5, column=0, sticky="w", pady=2)
-    ttk.Label(random_style_tab, textvariable=random_style_profiles_var, width=8, style="Vaso.TLabel").grid(row=5, column=1, sticky="w", padx=(8, 0), pady=2)
-
-    ttk.Label(random_style_tab, text="Δ diam.", style="Vaso.TLabel").grid(row=6, column=0, sticky="w", pady=2)
-    ttk.Label(random_style_tab, textvariable=random_style_diam_delta_var, width=8, style="Vaso.TLabel").grid(row=6, column=1, sticky="w", padx=(8, 0), pady=2)
-
-    ttk.Label(random_style_tab, text="Côtés", style="Vaso.TLabel").grid(row=7, column=0, sticky="w", pady=2)
-    ttk.Label(random_style_tab, textvariable=random_style_sides_var, width=8, style="Vaso.TLabel").grid(row=7, column=1, sticky="w", padx=(8, 0), pady=2)
-
-    ttk.Label(random_style_tab, text="Rot.", style="Vaso.TLabel").grid(row=8, column=0, sticky="w", pady=2)
-    ttk.Label(random_style_tab, textvariable=random_style_rot_var, width=8, style="Vaso.TLabel").grid(row=8, column=1, sticky="w", padx=(8, 0), pady=2)
-
-    ttk.Label(random_style_tab, text="Forme", style="Vaso.TLabel").grid(row=9, column=0, sticky="w", pady=2)
-    ttk.Label(random_style_tab, textvariable=random_style_shape_var, width=8, style="Vaso.TLabel").grid(row=9, column=1, sticky="w", padx=(8, 0), pady=2)
-
-    ttk.Label(
-        random_style_tab,
-        text="X = libre / non borné",
-        style="Vaso.TLabel",
-        justify="left",
-    ).grid(row=10, column=0, columnspan=2, sticky="w", pady=(8, 0))
 
     def update_profile_fields_state(event=None) -> None:
         try:
             active_count = int(profile_count_var.get())
         except Exception:
-            active_count = 3
+            active_count = 2
 
-        active_count = max(3, min(10, active_count))
+        active_count = max(2, min(10, active_count))
 
         for i in range(10):
             if i < active_count:
@@ -1235,19 +1214,26 @@ def main() -> None:
                 profile_sides_entries[i].configure(state="disabled")
                 profile_rotation_entries[i].configure(state="disabled")
 
-    def update_random_style_info(event=None) -> None:
-        rules = get_random_style_rules(random_style_var.get())
-        random_style_profiles_var.set(rules["profiles"])
-        random_style_diam_delta_var.set(rules["diam_delta"])
-        random_style_sides_var.set(rules["sides"])
-        random_style_rot_var.set(rules["rot"])
-        random_style_shape_var.set(rules["shape"])
+        # Toujours forcer les bornes des profils actifs
+        if active_count >= 1:
+            z_ratio_vars[0].set("0")
+        if active_count >= 2:
+            z_ratio_vars[active_count - 1].set("100")
+
 
     def update_random_complexity_state() -> None:
         if random_complexity_enabled_var.get():
             random_complexity_combo.configure(state="readonly")
         else:
-            random_complexity_combo.configure(state="disabled")        
+            random_complexity_combo.configure(state="disabled")
+
+    def update_random_texture_state() -> None:
+        if random_texture_enabled_var.get():
+            texture_type_combo.configure(state="readonly")
+            texture_zoom_combo.configure(state="readonly")
+        else:
+            texture_type_combo.configure(state="disabled")
+            texture_zoom_combo.configure(state="disabled")           
 
     def on_texture_controls_change(event=None) -> None:
         try:
@@ -1835,7 +1821,7 @@ def main() -> None:
             raise ValueError("Le volume imprimante est trop petit pour générer un vase aléatoire exploitable.")
 
         style_name = random_style_var.get()
-        rules = get_random_style_rules(style_name)
+
 
         if random_complexity_enabled_var.get():
             complexity_name = random_complexity_var.get()
@@ -1852,7 +1838,7 @@ def main() -> None:
         )
 
         if style_name == "Pur aléatoire":
-            style_profile_min, style_profile_max = 3, 10
+            style_profile_min, style_profile_max = 2, 10
             delta_min, delta_max = None, None
             sides_min, sides_max = 3, 12
             rot_min, rot_max = 0, 90
@@ -1919,7 +1905,7 @@ def main() -> None:
         )
 
         profile_count = int(round(rng.triangular(profile_min, profile_max, profile_mode)))
-        profile_count = max(3, min(10, profile_count))
+        profile_count = max(2, min(10, profile_count))
 
         profile_count_var.set(str(profile_count))
 
@@ -1950,7 +1936,9 @@ def main() -> None:
         min_diameter = 24
         max_diameter = max(min_diameter + 8, int(usable_diameter_max * 0.78))
 
-        if profile_count == 3:
+        if profile_count == 2:
+            active_z_values = [0, 100]
+        elif profile_count == 3:
             active_z_values = [0, rng.randint(35, 65), 100]
         else:
             inner_count = profile_count - 2
@@ -2164,7 +2152,8 @@ def main() -> None:
 
     theme_combo.bind("<<ComboboxSelected>>", on_theme_change)
     printer_profile_combo.bind("<<ComboboxSelected>>", on_printer_profile_selected)
-    random_style_combo.bind("<<ComboboxSelected>>", update_random_style_info)
+    texture_type_combo.bind("<<ComboboxSelected>>", on_texture_controls_change)
+    texture_zoom_combo.bind("<<ComboboxSelected>>", on_texture_controls_change)
     preview_3d_mode_combo.bind("<<ComboboxSelected>>", on_preview_3d_mode_change)
     profile_count_var.trace_add("write", lambda *args: update_profile_fields_state())
 
@@ -2214,15 +2203,11 @@ def main() -> None:
     refresh_printer_profile_combo_values()
     printer_profile_var.set(active_printer_profile["name"])
     update_profile_fields_state()
-    update_random_style_info()
     update_random_complexity_state()
+    update_random_texture_state()
 
-
-    try:
-        shading_label_var.set(f"{int(round(shading_var.get()))} %")
-        draw_preview(build_current_params())
-    except Exception as exc:
-        status_var.set(f"Aperçu initial impossible : {exc}")
+    shading_label_var.set(f"{int(round(shading_var.get()))} %")
+    status_var.set("Interface prête. Cliquez sur « Aperçu » ou « Aléatoire » pour générer un vase.")
 
 
     root.mainloop()

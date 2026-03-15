@@ -7,6 +7,13 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [1.0.0] - 2026-03-15
+
+### Modifié
+
+ - Simplification des paramètres
+
+
 ## [0.3.10] - 2026-03-15
 
 ### Ajouté
