@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.2.14"
+APP_VERSION = "0.2.15"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -880,7 +880,7 @@ def main() -> None:
 
     ttk.Label(
         shape_form_tab,
-        text="Les profils utilisés doivent avoir des hauteurs strictement croissantes.",
+        text="Les profils doivent avoir des hauteurs croissantes.",
         style="Vaso.TLabel",
         justify="left",
     ).grid(row=2, column=0, sticky="w", pady=(0, 0))
