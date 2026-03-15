@@ -4,7 +4,7 @@ import json
 import random
 import tkinter as tk
 import numpy as np
-from tkinter import ttk, messagebox, filedialog, scrolledtext
+from tkinter import ttk, messagebox, filedialog, scrolledtext, simpledialog
 
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.2.7"
+APP_VERSION = "0.2.8"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -96,21 +96,81 @@ THEMES = {
     ),
 }
 
+DEFAULT_PRINTER_PROFILES = [
+    {"name": "Profil par défaut", "width": 220.0, "depth": 220.0, "height": 250.0},
+    {"name": "Ender 5 Pro", "width": 220.0, "depth": 220.0, "height": 300.0},
+    {"name": "Bambu A1 Mini", "width": 180.0, "depth": 180.0, "height": 180.0},
+]
+
 
 def get_settings_path(base_dir: Path) -> Path:
     return base_dir / SETTINGS_FILE
 
 
-def load_saved_theme(base_dir: Path) -> str | None:
+def load_settings(base_dir: Path) -> dict:
     settings_path = get_settings_path(base_dir)
     if not settings_path.exists():
-        return None
+        return {}
 
     try:
         data = json.loads(settings_path.read_text(encoding="utf-8"))
     except Exception:
-        return None
+        return {}
 
+    return data if isinstance(data, dict) else {}
+
+
+def save_settings(base_dir: Path, payload: dict) -> None:
+    settings_path = get_settings_path(base_dir)
+    settings_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
+def _normalize_printer_profiles(raw_profiles) -> list[dict]:
+    profiles: list[dict] = []
+
+    if isinstance(raw_profiles, list):
+        for item in raw_profiles:
+            if not isinstance(item, dict):
+                continue
+
+            name = item.get("name")
+            width = item.get("width")
+            depth = item.get("depth")
+            height = item.get("height")
+
+            if not isinstance(name, str) or not name.strip():
+                continue
+
+            try:
+                width = float(width)
+                depth = float(depth)
+                height = float(height)
+            except Exception:
+                continue
+
+            if width <= 0 or depth <= 0 or height <= 0:
+                continue
+
+            profiles.append(
+                {
+                    "name": name.strip(),
+                    "width": width,
+                    "depth": depth,
+                    "height": height,
+                }
+            )
+
+    if not profiles:
+        profiles = [dict(profile) for profile in DEFAULT_PRINTER_PROFILES]
+
+    return profiles
+
+
+def load_saved_theme(base_dir: Path) -> str | None:
+    data = load_settings(base_dir)
     theme_name = data.get("theme")
     if isinstance(theme_name, str) and theme_name in THEMES:
         return theme_name
@@ -118,12 +178,29 @@ def load_saved_theme(base_dir: Path) -> str | None:
 
 
 def save_selected_theme(base_dir: Path, theme_name: str) -> None:
-    settings_path = get_settings_path(base_dir)
-    payload = {"theme": theme_name}
-    settings_path.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
+    data = load_settings(base_dir)
+    data["theme"] = theme_name
+    save_settings(base_dir, data)
+
+
+def load_printer_profiles(base_dir: Path) -> tuple[list[dict], str]:
+    data = load_settings(base_dir)
+
+    profiles = _normalize_printer_profiles(data.get("printer_profiles"))
+    profile_names = [profile["name"] for profile in profiles]
+
+    active_name = data.get("active_printer_profile")
+    if not isinstance(active_name, str) or active_name not in profile_names:
+        active_name = profiles[0]["name"]
+
+    return profiles, active_name
+
+
+def save_printer_profiles(base_dir: Path, profiles: list[dict], active_name: str) -> None:
+    data = load_settings(base_dir)
+    data["printer_profiles"] = profiles
+    data["active_printer_profile"] = active_name
+    save_settings(base_dir, data)
 
 
 def get_desktop_dir() -> Path:
@@ -563,15 +640,22 @@ def main() -> None:
     startup_theme = saved_theme if saved_theme is not None else random.choice(theme_names)
     theme_var = tk.StringVar(value=startup_theme)
 
+    printer_profiles, active_printer_profile_name = load_printer_profiles(base_dir)
+    active_printer_profile = next(
+        (profile for profile in printer_profiles if profile["name"] == active_printer_profile_name),
+        printer_profiles[0],
+    )
+
     status_var = tk.StringVar(value="Prêt.")
     export_path_var = tk.StringVar(value=str(get_default_export_dir()))
     seed_var = tk.StringVar(value="")
     shading_var = tk.DoubleVar(value=68.0)
     shading_label_var = tk.StringVar(value="68 %")
 
-    build_width_max_var = tk.StringVar(value="220")
-    build_depth_max_var = tk.StringVar(value="220")
-    build_height_max_var = tk.StringVar(value="250")
+    printer_profile_var = tk.StringVar(value=active_printer_profile["name"])
+    build_width_max_var = tk.StringVar(value=f'{active_printer_profile["width"]:.1f}'.rstrip("0").rstrip("."))
+    build_depth_max_var = tk.StringVar(value=f'{active_printer_profile["depth"]:.1f}'.rstrip("0").rstrip("."))
+    build_height_max_var = tk.StringVar(value=f'{active_printer_profile["height"]:.1f}'.rstrip("0").rstrip("."))
 
     height_var = tk.StringVar(value="180")
     wall_var = tk.StringVar(value="2.4")
@@ -865,26 +949,60 @@ def main() -> None:
         style="Vaso.TLabel",
     ).grid(row=3, column=0, sticky="w", pady=(8, 0))
 
-    ttk.Label(build_volume_frame, text="Largeur max (mm)", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", pady=4)
-    ttk.Entry(build_volume_frame, textvariable=build_width_max_var, width=12, style="Vaso.TEntry").grid(row=0, column=1, sticky="ew", pady=4)
+    ttk.Label(build_volume_frame, text="Profil actif", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", pady=4)
 
-    ttk.Label(build_volume_frame, text="Profondeur max (mm)", style="Vaso.TLabel").grid(row=1, column=0, sticky="w", pady=4)
-    ttk.Entry(build_volume_frame, textvariable=build_depth_max_var, width=12, style="Vaso.TEntry").grid(row=1, column=1, sticky="ew", pady=4)
+    printer_profile_combo = ttk.Combobox(
+        build_volume_frame,
+        textvariable=printer_profile_var,
+        values=[profile["name"] for profile in printer_profiles],
+        state="readonly",
+        width=28,
+        style="Vaso.TCombobox",
+    )
+    printer_profile_combo.grid(row=0, column=1, columnspan=2, sticky="ew", pady=4)
 
-    ttk.Label(build_volume_frame, text="Hauteur max (mm)", style="Vaso.TLabel").grid(row=2, column=0, sticky="w", pady=4)
-    ttk.Entry(build_volume_frame, textvariable=build_height_max_var, width=12, style="Vaso.TEntry").grid(row=2, column=1, sticky="ew", pady=4)
+    ttk.Button(
+        build_volume_frame,
+        text="Nouveau",
+        command=lambda: on_new_printer_profile(),
+        style="Vaso.TButton",
+    ).grid(row=1, column=0, sticky="ew", pady=(4, 8), padx=(0, 4))
+
+    ttk.Button(
+        build_volume_frame,
+        text="Enregistrer",
+        command=lambda: on_save_printer_profile(),
+        style="Vaso.TButton",
+    ).grid(row=1, column=1, sticky="ew", pady=(4, 8), padx=4)
+
+    ttk.Button(
+        build_volume_frame,
+        text="Supprimer",
+        command=lambda: on_delete_printer_profile(),
+        style="Vaso.TButton",
+    ).grid(row=1, column=2, sticky="ew", pady=(4, 8), padx=(4, 0))
+
+    ttk.Label(build_volume_frame, text="Largeur max (mm)", style="Vaso.TLabel").grid(row=2, column=0, sticky="w", pady=4)
+    ttk.Entry(build_volume_frame, textvariable=build_width_max_var, width=12, style="Vaso.TEntry").grid(row=2, column=1, columnspan=2, sticky="ew", pady=4)
+
+    ttk.Label(build_volume_frame, text="Profondeur max (mm)", style="Vaso.TLabel").grid(row=3, column=0, sticky="w", pady=4)
+    ttk.Entry(build_volume_frame, textvariable=build_depth_max_var, width=12, style="Vaso.TEntry").grid(row=3, column=1, columnspan=2, sticky="ew", pady=4)
+
+    ttk.Label(build_volume_frame, text="Hauteur max (mm)", style="Vaso.TLabel").grid(row=4, column=0, sticky="w", pady=4)
+    ttk.Entry(build_volume_frame, textvariable=build_height_max_var, width=12, style="Vaso.TEntry").grid(row=4, column=1, columnspan=2, sticky="ew", pady=4)
 
     ttk.Label(
         build_volume_frame,
         text=(
-            "Ces limites sont utilisées pour contraindre\n"
-            "la génération aléatoire aux dimensions imprimables."
+            "Le profil sélectionné définit les limites utilisées\n"
+            "pour contraindre la génération aléatoire."
         ),
         justify="left",
         style="Vaso.TLabel",
-    ).grid(row=3, column=0, columnspan=2, sticky="w", pady=(8, 0))
+    ).grid(row=5, column=0, columnspan=3, sticky="w", pady=(8, 0))
 
-    build_volume_frame.columnconfigure(1, weight=1)    
+    build_volume_frame.columnconfigure(1, weight=1)
+    build_volume_frame.columnconfigure(2, weight=1)  
 
     export_frame.columnconfigure(0, weight=1)
 
@@ -1089,7 +1207,120 @@ def main() -> None:
         if height_max <= 0:
             raise ValueError("La hauteur max d’impression doit être > 0.")
 
-        return width_max, depth_max, height_max        
+        return width_max, depth_max, height_max
+
+    def refresh_printer_profile_combo_values() -> None:
+        printer_profile_combo["values"] = [profile["name"] for profile in printer_profiles]
+
+    def get_printer_profile_index(profile_name: str) -> int | None:
+        for index, profile in enumerate(printer_profiles):
+            if profile["name"] == profile_name:
+                return index
+        return None
+
+    def apply_printer_profile_to_fields(profile: dict) -> None:
+        build_width_max_var.set(f'{profile["width"]:.1f}'.rstrip("0").rstrip("."))
+        build_depth_max_var.set(f'{profile["depth"]:.1f}'.rstrip("0").rstrip("."))
+        build_height_max_var.set(f'{profile["height"]:.1f}'.rstrip("0").rstrip("."))
+
+    def on_printer_profile_selected(event=None) -> None:
+        profile_name = printer_profile_var.get()
+        profile_index = get_printer_profile_index(profile_name)
+        if profile_index is None:
+            return
+
+        profile = printer_profiles[profile_index]
+        apply_printer_profile_to_fields(profile)
+        save_printer_profiles(base_dir, printer_profiles, profile["name"])
+        status_var.set(f"Profil imprimante actif : {profile['name']}.")
+
+    def on_save_printer_profile() -> None:
+        profile_name = printer_profile_var.get().strip()
+        if not profile_name:
+            messagebox.showerror(APP_NAME, "Aucun profil imprimante sélectionné.")
+            return
+
+        profile_index = get_printer_profile_index(profile_name)
+        if profile_index is None:
+            messagebox.showerror(APP_NAME, "Le profil sélectionné est introuvable.")
+            return
+
+        width_max, depth_max, height_max = read_build_volume_limits()
+
+        printer_profiles[profile_index] = {
+            "name": profile_name,
+            "width": width_max,
+            "depth": depth_max,
+            "height": height_max,
+        }
+
+        refresh_printer_profile_combo_values()
+        save_printer_profiles(base_dir, printer_profiles, profile_name)
+        status_var.set(f"Profil imprimante enregistré : {profile_name}.")
+
+    def on_new_printer_profile() -> None:
+        new_name = simpledialog.askstring(
+            APP_NAME,
+            "Nom du nouveau profil imprimante :",
+            parent=root,
+        )
+
+        if new_name is None:
+            return
+
+        new_name = new_name.strip()
+        if not new_name:
+            messagebox.showerror(APP_NAME, "Le nom du profil ne peut pas être vide.")
+            return
+
+        if get_printer_profile_index(new_name) is not None:
+            messagebox.showerror(APP_NAME, f"Le profil « {new_name} » existe déjà.")
+            return
+
+        width_max, depth_max, height_max = read_build_volume_limits()
+
+        printer_profiles.append(
+            {
+                "name": new_name,
+                "width": width_max,
+                "depth": depth_max,
+                "height": height_max,
+            }
+        )
+
+        printer_profile_var.set(new_name)
+        refresh_printer_profile_combo_values()
+        save_printer_profiles(base_dir, printer_profiles, new_name)
+        status_var.set(f"Nouveau profil imprimante créé : {new_name}.")
+
+    def on_delete_printer_profile() -> None:
+        profile_name = printer_profile_var.get().strip()
+        profile_index = get_printer_profile_index(profile_name)
+
+        if profile_index is None:
+            messagebox.showerror(APP_NAME, "Le profil sélectionné est introuvable.")
+            return
+
+        if len(printer_profiles) <= 1:
+            messagebox.showerror(APP_NAME, "Impossible de supprimer le dernier profil imprimante.")
+            return
+
+        confirmed = messagebox.askyesno(
+            APP_NAME,
+            f"Supprimer le profil imprimante « {profile_name} » ?",
+            parent=root,
+        )
+        if not confirmed:
+            return
+
+        del printer_profiles[profile_index]
+
+        new_active_name = printer_profiles[0]["name"]
+        printer_profile_var.set(new_active_name)
+        apply_printer_profile_to_fields(printer_profiles[0])
+        refresh_printer_profile_combo_values()
+        save_printer_profiles(base_dir, printer_profiles, new_active_name)
+        status_var.set(f"Profil imprimante supprimé : {profile_name}.")       
 
     def randomize_fields() -> None:
         seed_value = read_seed()
@@ -1254,6 +1485,7 @@ def main() -> None:
             messagebox.showerror(APP_NAME, f"Erreur pendant l’application du thème :\n{exc}")
 
     theme_combo.bind("<<ComboboxSelected>>", on_theme_change)
+    printer_profile_combo.bind("<<ComboboxSelected>>", on_printer_profile_selected)
 
     ttk.Button(
         buttons_frame,
@@ -1297,6 +1529,9 @@ def main() -> None:
         canvas_top=canvas_top,
         help_text_widget=help_text,
     )
+
+    refresh_printer_profile_combo_values()
+    printer_profile_var.set(active_printer_profile["name"])
 
 
     try:

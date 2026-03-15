@@ -7,6 +7,12 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [0.2.8] — 2026-03-15
+
+### Ajouté
+
+ - Profils d'imprimantes modifiables en combobox
+
 
 ## [0.2.7] — 2026-03-14
 

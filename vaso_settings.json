@@ -1,3 +1,24 @@
 {
-  "theme": "[Sombre] Midnight Garage"
+  "theme": "[Sombre] Midnight Garage",
+  "printer_profiles": [
+    {
+      "name": "Profil par défaut",
+      "width": 220.0,
+      "depth": 220.0,
+      "height": 250.0
+    },
+    {
+      "name": "Ender 5 pro - Antoine",
+      "width": 220.0,
+      "depth": 220.0,
+      "height": 300.0
+    },
+    {
+      "name": "Alphawise U30 - Klm",
+      "width": 220.0,
+      "depth": 220.0,
+      "height": 250.0
+    }
+  ],
+  "active_printer_profile": "Ender 5 pro - Antoine"
 }
