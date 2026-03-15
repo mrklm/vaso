@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.2.9"
+APP_VERSION = "0.2.10"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -259,61 +259,58 @@ def render_markdown_into_text(widget: scrolledtext.ScrolledText, markdown_text: 
     widget.configure(state="disabled")    
 
 
-def _interp_float(a: float, b: float, t: float) -> float:
-    return (1.0 - t) * a + t * b
-
-
-def _interp_int(a: int, b: int, t: float) -> int:
-    return int(round((1.0 - t) * a + t * b))
-
-
-def _build_dynamic_profiles_from_anchors(
+def _build_profiles_from_explicit_ui(
     profile_count: int,
-    d_bottom: float,
-    d_middle: float,
-    d_top: float,
-    s_bottom: int,
-    s_middle: int,
-    s_top: int,
-    rot_middle: float,
-    rot_top: float,
-    middle_z_ratio: float,
+    z_ratio_vars: list[tk.StringVar],
+    diameter_vars: list[tk.StringVar],
+    sides_vars: list[tk.StringVar],
+    rotation_vars: list[tk.StringVar],
 ) -> list[Profile]:
     if profile_count < 3 or profile_count > 10:
         raise ValueError("Le nombre de profils doit être compris entre 3 et 10.")
 
-    if not (0.1 < middle_z_ratio < 0.9):
-        raise ValueError("La hauteur du profil central doit être comprise entre 10 et 90 %.")
-
     profiles: list[Profile] = []
 
+    previous_z_ratio = -1.0
+
     for i in range(profile_count):
-        z_ratio = i / (profile_count - 1)
+        z_ratio = float(z_ratio_vars[i].get()) / 100.0
+        diameter = float(diameter_vars[i].get())
+        sides = int(sides_vars[i].get())
+        rotation_deg = float(rotation_vars[i].get())
 
-        if z_ratio <= middle_z_ratio:
-            local_t = z_ratio / middle_z_ratio if middle_z_ratio > 0 else 0.0
+        if not (0.0 <= z_ratio <= 1.0):
+            raise ValueError(f"Le profil {i + 1} doit avoir une hauteur comprise entre 0 et 100 %.")
 
-            diameter = _interp_float(d_bottom, d_middle, local_t)
-            sides = _interp_int(s_bottom, s_middle, local_t)
-            rotation_deg = _interp_float(0.0, rot_middle, local_t)
-        else:
-            upper_span = 1.0 - middle_z_ratio
-            local_t = (z_ratio - middle_z_ratio) / upper_span if upper_span > 0 else 0.0
+        if diameter <= 0:
+            raise ValueError(f"Le diamètre du profil {i + 1} doit être > 0.")
 
-            diameter = _interp_float(d_middle, d_top, local_t)
-            sides = _interp_int(s_middle, s_top, local_t)
-            rotation_deg = _interp_float(rot_middle, rot_top, local_t)
+        if sides < 3:
+            raise ValueError(f"Le nombre de côtés du profil {i + 1} doit être >= 3.")
+
+        if z_ratio <= previous_z_ratio:
+            raise ValueError(
+                f"Les hauteurs de profils doivent être strictement croissantes (profil {i + 1})."
+            )
+
+        previous_z_ratio = z_ratio
 
         profiles.append(
             Profile(
                 z_ratio=z_ratio,
                 diameter=diameter,
-                sides=max(3, sides),
+                sides=sides,
                 rotation_deg=rotation_deg,
                 offset_x=0.0,
                 offset_y=0.0,
             )
         )
+
+    if abs(profiles[0].z_ratio - 0.0) > 1e-9:
+        raise ValueError("Le profil 1 doit être à 0 %.")
+
+    if abs(profiles[-1].z_ratio - 1.0) > 1e-9:
+        raise ValueError("Le dernier profil utilisé doit être à 100 %.")
 
     return profiles
 
@@ -325,18 +322,11 @@ def build_params_from_ui(
     radial_var: tk.StringVar,
     vertical_var: tk.StringVar,
     profile_count_var: tk.StringVar,
-    d_bottom_var: tk.StringVar,
-    d_middle_var: tk.StringVar,
-    d_top_var: tk.StringVar,
-    s_bottom_var: tk.StringVar,
-    s_middle_var: tk.StringVar,
-    s_top_var: tk.StringVar,
-    rot_middle_var: tk.StringVar,
-    rot_top_var: tk.StringVar,
-    middle_height_ratio_var: tk.StringVar,
+    z_ratio_vars: list[tk.StringVar],
+    diameter_vars: list[tk.StringVar],
+    sides_vars: list[tk.StringVar],
+    rotation_vars: list[tk.StringVar],
 ) -> VaseParameters:
-
-
     params = VaseParameters(
         height_mm=float(height_var.get()),
         wall_thickness_mm=float(wall_var.get()),
@@ -351,19 +341,13 @@ def build_params_from_ui(
     if profile_count < 3 or profile_count > 10:
         raise ValueError("Le nombre de profils doit être compris entre 3 et 10.")
 
-    params.profiles = _build_dynamic_profiles_from_anchors(
+    params.profiles = _build_profiles_from_explicit_ui(
         profile_count=profile_count,
-        d_bottom=float(d_bottom_var.get()),
-        d_middle=float(d_middle_var.get()),
-        d_top=float(d_top_var.get()),
-        s_bottom=int(s_bottom_var.get()),
-        s_middle=int(s_middle_var.get()),
-        s_top=int(s_top_var.get()),
-        rot_middle=float(rot_middle_var.get()),
-        rot_top=float(rot_top_var.get()),
-        middle_z_ratio=float(middle_height_ratio_var.get()) / 100.0,
+        z_ratio_vars=z_ratio_vars,
+        diameter_vars=diameter_vars,
+        sides_vars=sides_vars,
+        rotation_vars=rotation_vars,
     )
-
 
     return params
 
@@ -664,17 +648,57 @@ def main() -> None:
     vertical_var = tk.StringVar(value="120")
     profile_count_var = tk.StringVar(value="3")
 
-    d_bottom_var = tk.StringVar(value="40")
-    d_middle_var = tk.StringVar(value="90")
-    d_top_var = tk.StringVar(value="50")
+    z_ratio_vars = [
+        tk.StringVar(value="0"),
+        tk.StringVar(value="20"),
+        tk.StringVar(value="35"),
+        tk.StringVar(value="50"),
+        tk.StringVar(value="62"),
+        tk.StringVar(value="72"),
+        tk.StringVar(value="80"),
+        tk.StringVar(value="88"),
+        tk.StringVar(value="94"),
+        tk.StringVar(value="100"),
+    ]
 
-    s_bottom_var = tk.StringVar(value="6")
-    s_middle_var = tk.StringVar(value="8")
-    s_top_var = tk.StringVar(value="6")
+    diameter_vars = [
+        tk.StringVar(value="40"),
+        tk.StringVar(value="55"),
+        tk.StringVar(value="72"),
+        tk.StringVar(value="90"),
+        tk.StringVar(value="82"),
+        tk.StringVar(value="74"),
+        tk.StringVar(value="66"),
+        tk.StringVar(value="60"),
+        tk.StringVar(value="55"),
+        tk.StringVar(value="50"),
+    ]
 
-    rot_middle_var = tk.StringVar(value="15")
-    rot_top_var = tk.StringVar(value="30")
-    middle_height_ratio_var = tk.StringVar(value="50")
+    sides_vars = [
+        tk.StringVar(value="6"),
+        tk.StringVar(value="6"),
+        tk.StringVar(value="7"),
+        tk.StringVar(value="8"),
+        tk.StringVar(value="8"),
+        tk.StringVar(value="8"),
+        tk.StringVar(value="7"),
+        tk.StringVar(value="7"),
+        tk.StringVar(value="6"),
+        tk.StringVar(value="6"),
+    ]
+
+    rotation_vars = [
+        tk.StringVar(value="0"),
+        tk.StringVar(value="4"),
+        tk.StringVar(value="8"),
+        tk.StringVar(value="15"),
+        tk.StringVar(value="20"),
+        tk.StringVar(value="24"),
+        tk.StringVar(value="28"),
+        tk.StringVar(value="30"),
+        tk.StringVar(value="30"),
+        tk.StringVar(value="30"),
+    ]
 
 
     notebook = ttk.Notebook(main_frame, style="Vaso.TNotebook")
@@ -697,24 +721,33 @@ def main() -> None:
     general_tab.columnconfigure(2, weight=0)
 
     general_tab.rowconfigure(0, weight=1)
-    general_tab.rowconfigure(1, weight=1)
-    general_tab.rowconfigure(2, weight=0)
+    general_tab.rowconfigure(1, weight=0)
 
-    general_frame = ttk.LabelFrame(
+    left_panel_frame = ttk.LabelFrame(
         general_tab,
-        text="Paramètres généraux",
-        padding=12,
+        text="Paramètres",
+        padding=8,
         style="Vaso.TLabelframe",
     )
-    general_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 12), pady=(0, 12))
+    left_panel_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 12), pady=(0, 12))
 
-    shape_frame = ttk.LabelFrame(
-        general_tab,
-        text="Forme du vase",
-        padding=12,
-        style="Vaso.TLabelframe",
-    )
-    shape_frame.grid(row=1, column=0, sticky="nsew", padx=(0, 12), pady=(0, 12))
+    left_panel_frame.columnconfigure(0, weight=1)
+    left_panel_frame.rowconfigure(0, weight=1)
+
+    left_notebook = ttk.Notebook(left_panel_frame, style="Vaso.TNotebook")
+    left_notebook.grid(row=0, column=0, sticky="nsew")
+
+    general_form_tab = ttk.Frame(left_notebook, style="Vaso.TFrame")
+    shape_form_tab = ttk.Frame(left_notebook, style="Vaso.TFrame")
+
+    left_notebook.add(general_form_tab, text="Paramètres généraux")
+    left_notebook.add(shape_form_tab, text="Profils du vase")
+
+    general_form_tab.columnconfigure(0, weight=0)
+    general_form_tab.columnconfigure(1, weight=1)
+
+    shape_form_tab.columnconfigure(0, weight=1)
+    shape_form_tab.rowconfigure(0, weight=1)
 
     preview_3d_frame = ttk.LabelFrame(
         general_tab,
@@ -722,8 +755,7 @@ def main() -> None:
         padding=12,
         style="Vaso.TLabelframe",
     )
-    preview_3d_frame.grid(row=0, column=1, rowspan=2, sticky="nsew", padx=(0, 12), pady=(0, 4))
-
+    preview_3d_frame.grid(row=0, column=1, sticky="nsew", padx=(0, 12), pady=(0, 4))
 
     side_preview_frame = ttk.LabelFrame(
         general_tab,
@@ -739,69 +771,132 @@ def main() -> None:
         padding=12,
         style="Vaso.TLabelframe",
     )
-    top_preview_frame.grid(row=1, column=2, sticky="nsew", pady=(0, 12))
+    top_preview_frame.grid(row=0, column=3, sticky="nsew", pady=(0, 12))
+
+    buttons_frame = ttk.Frame(general_tab, style="Vaso.TFrame")
+    buttons_frame.grid(row=1, column=1, columnspan=2, sticky="n", pady=(2, 0))
 
 
 
-    ttk.Label(general_frame, text="Hauteur (mm)", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", pady=4)
-    ttk.Entry(general_frame, textvariable=height_var, width=12, style="Vaso.TEntry").grid(row=0, column=1, sticky="ew", pady=4)
+    ttk.Label(general_form_tab, text="Hauteur (mm)", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", pady=4)
+    ttk.Entry(general_form_tab, textvariable=height_var, width=12, style="Vaso.TEntry").grid(row=0, column=1, sticky="ew", pady=4)
 
-    ttk.Label(general_frame, text="Épaisseur coque (mm)", style="Vaso.TLabel").grid(row=1, column=0, sticky="w", pady=4)
-    ttk.Entry(general_frame, textvariable=wall_var, width=12, style="Vaso.TEntry").grid(row=1, column=1, sticky="ew", pady=4)
+    ttk.Label(general_form_tab, text="Épaisseur coque (mm)", style="Vaso.TLabel").grid(row=1, column=0, sticky="w", pady=4)
+    ttk.Entry(general_form_tab, textvariable=wall_var, width=12, style="Vaso.TEntry").grid(row=1, column=1, sticky="ew", pady=4)
 
-    ttk.Label(general_frame, text="Épaisseur fond (mm)", style="Vaso.TLabel").grid(row=2, column=0, sticky="w", pady=4)
-    ttk.Entry(general_frame, textvariable=bottom_var, width=12, style="Vaso.TEntry").grid(row=2, column=1, sticky="ew", pady=4)
+    ttk.Label(general_form_tab, text="Épaisseur fond (mm)", style="Vaso.TLabel").grid(row=2, column=0, sticky="w", pady=4)
+    ttk.Entry(general_form_tab, textvariable=bottom_var, width=12, style="Vaso.TEntry").grid(row=2, column=1, sticky="ew", pady=4)
 
-    ttk.Label(general_frame, text="Résolution circulaire", style="Vaso.TLabel").grid(row=3, column=0, sticky="w", pady=4)
-    ttk.Entry(general_frame, textvariable=radial_var, width=12, style="Vaso.TEntry").grid(row=3, column=1, sticky="ew", pady=4)
+    ttk.Label(general_form_tab, text="Résolution circulaire", style="Vaso.TLabel").grid(row=3, column=0, sticky="w", pady=4)
+    ttk.Entry(general_form_tab, textvariable=radial_var, width=12, style="Vaso.TEntry").grid(row=3, column=1, sticky="ew", pady=4)
 
-    ttk.Label(general_frame, text="Résolution verticale", style="Vaso.TLabel").grid(row=4, column=0, sticky="w", pady=4)
-    ttk.Entry(general_frame, textvariable=vertical_var, width=12, style="Vaso.TEntry").grid(row=4, column=1, sticky="ew", pady=4)
+    ttk.Label(general_form_tab, text="Résolution verticale", style="Vaso.TLabel").grid(row=4, column=0, sticky="w", pady=4)
+    ttk.Entry(general_form_tab, textvariable=vertical_var, width=12, style="Vaso.TEntry").grid(row=4, column=1, sticky="ew", pady=4)
 
-    ttk.Label(general_frame, text="Nombre de profils (3-10)", style="Vaso.TLabel").grid(row=5, column=0, sticky="w", pady=4)
-    ttk.Entry(general_frame, textvariable=profile_count_var, width=12, style="Vaso.TEntry").grid(row=5, column=1, sticky="ew", pady=4)
+    ttk.Label(general_form_tab, text="Nombre de profils (3-10)", style="Vaso.TLabel").grid(row=5, column=0, sticky="w", pady=4)
+    ttk.Entry(general_form_tab, textvariable=profile_count_var, width=12, style="Vaso.TEntry").grid(row=5, column=1, sticky="ew", pady=4)
 
-    ttk.Label(general_frame, text="Seed", style="Vaso.TLabel").grid(row=6, column=0, sticky="w", pady=4)
-    ttk.Entry(general_frame, textvariable=seed_var, width=12, style="Vaso.TEntry").grid(row=6, column=1, sticky="ew", pady=4)
+    ttk.Label(general_form_tab, text="Seed", style="Vaso.TLabel").grid(row=6, column=0, sticky="w", pady=4)
+    ttk.Entry(general_form_tab, textvariable=seed_var, width=12, style="Vaso.TEntry").grid(row=6, column=1, sticky="ew", pady=4)
 
-    general_frame.columnconfigure(1, weight=1)
+    general_form_tab.columnconfigure(1, weight=1)
 
-    ttk.Label(shape_frame, text="Diamètre bas (mm)", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", pady=4)
-    ttk.Entry(shape_frame, textvariable=d_bottom_var, width=12, style="Vaso.TEntry").grid(row=0, column=1, sticky="ew", pady=4)
+    profiles_table_frame = ttk.Frame(shape_form_tab, style="Vaso.TFrame")
+    profiles_table_frame.grid(row=0, column=0, sticky="nsew")
 
-    ttk.Label(shape_frame, text="Diamètre milieu (mm)", style="Vaso.TLabel").grid(row=1, column=0, sticky="w", pady=4)
-    ttk.Entry(shape_frame, textvariable=d_middle_var, width=12, style="Vaso.TEntry").grid(row=1, column=1, sticky="ew", pady=4)
+    ttk.Label(profiles_table_frame, text="Profil", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", padx=(0, 8), pady=(0, 6))
+    ttk.Label(profiles_table_frame, text="Hauteur (%)", style="Vaso.TLabel").grid(row=0, column=1, sticky="w", padx=4, pady=(0, 6))
+    ttk.Label(profiles_table_frame, text="Diamètre (mm)", style="Vaso.TLabel").grid(row=0, column=2, sticky="w", padx=4, pady=(0, 6))
+    ttk.Label(profiles_table_frame, text="Côtés", style="Vaso.TLabel").grid(row=0, column=3, sticky="w", padx=4, pady=(0, 6))
+    ttk.Label(profiles_table_frame, text="Rotation (°)", style="Vaso.TLabel").grid(row=0, column=4, sticky="w", padx=4, pady=(0, 6))
 
-    ttk.Label(shape_frame, text="Diamètre haut (mm)", style="Vaso.TLabel").grid(row=2, column=0, sticky="w", pady=4)
-    ttk.Entry(shape_frame, textvariable=d_top_var, width=12, style="Vaso.TEntry").grid(row=2, column=1, sticky="ew", pady=4)
+    profile_row_labels = []
+    profile_z_entries = []
+    profile_diameter_entries = []
+    profile_sides_entries = []
+    profile_rotation_entries = []
 
-    ttk.Label(shape_frame, text="Côtés bas", style="Vaso.TLabel").grid(row=3, column=0, sticky="w", pady=4)
-    ttk.Entry(shape_frame, textvariable=s_bottom_var, width=12, style="Vaso.TEntry").grid(row=3, column=1, sticky="ew", pady=4)
+    for i in range(10):
+        row_index = i + 1
 
-    ttk.Label(shape_frame, text="Côtés milieu", style="Vaso.TLabel").grid(row=4, column=0, sticky="w", pady=4)
-    ttk.Entry(shape_frame, textvariable=s_middle_var, width=12, style="Vaso.TEntry").grid(row=4, column=1, sticky="ew", pady=4)
+        row_label = ttk.Label(
+            profiles_table_frame,
+            text=f"P{i + 1}",
+            style="Vaso.TLabel",
+        )
+        row_label.grid(row=row_index, column=0, sticky="w", padx=(0, 8), pady=3)
+        profile_row_labels.append(row_label)
 
-    ttk.Label(shape_frame, text="Côtés haut", style="Vaso.TLabel").grid(row=5, column=0, sticky="w", pady=4)
-    ttk.Entry(shape_frame, textvariable=s_top_var, width=12, style="Vaso.TEntry").grid(row=5, column=1, sticky="ew", pady=4)
+        z_entry = ttk.Entry(
+            profiles_table_frame,
+            textvariable=z_ratio_vars[i],
+            width=8,
+            style="Vaso.TEntry",
+        )
+        z_entry.grid(row=row_index, column=1, sticky="ew", padx=4, pady=3)
+        profile_z_entries.append(z_entry)
 
-    ttk.Label(shape_frame, text="Rotation milieu (°)", style="Vaso.TLabel").grid(row=6, column=0, sticky="w", pady=4)
-    ttk.Entry(shape_frame, textvariable=rot_middle_var, width=12, style="Vaso.TEntry").grid(row=6, column=1, sticky="ew", pady=4)
+        diameter_entry = ttk.Entry(
+            profiles_table_frame,
+            textvariable=diameter_vars[i],
+            width=10,
+            style="Vaso.TEntry",
+        )
+        diameter_entry.grid(row=row_index, column=2, sticky="ew", padx=4, pady=3)
+        profile_diameter_entries.append(diameter_entry)
 
-    ttk.Label(shape_frame, text="Rotation haut (°)", style="Vaso.TLabel").grid(row=7, column=0, sticky="w", pady=4)
-    ttk.Entry(shape_frame, textvariable=rot_top_var, width=12, style="Vaso.TEntry").grid(row=7, column=1, sticky="ew", pady=4)
+        sides_entry = ttk.Entry(
+            profiles_table_frame,
+            textvariable=sides_vars[i],
+            width=8,
+            style="Vaso.TEntry",
+        )
+        sides_entry.grid(row=row_index, column=3, sticky="ew", padx=4, pady=3)
+        profile_sides_entries.append(sides_entry)
 
-    ttk.Label(shape_frame, text="Hauteur profil central (%)", style="Vaso.TLabel").grid(row=8, column=0, sticky="w", pady=4)
-    ttk.Entry(shape_frame, textvariable=middle_height_ratio_var, width=12, style="Vaso.TEntry").grid(row=8, column=1, sticky="ew", pady=4)
+        rotation_entry = ttk.Entry(
+            profiles_table_frame,
+            textvariable=rotation_vars[i],
+            width=10,
+            style="Vaso.TEntry",
+        )
+        rotation_entry.grid(row=row_index, column=4, sticky="ew", padx=4, pady=3)
+        profile_rotation_entries.append(rotation_entry)
 
     ttk.Label(
-        shape_frame,
-        text="50 = milieu ; 40 = plus bas ; 60 = plus haut",
+        shape_form_tab,
+        text="Le profil 1 doit être à 0 % et le dernier profil utilisé à 100 %.",
         style="Vaso.TLabel",
-    ).grid(row=9, column=0, columnspan=2, sticky="w", pady=4)
+        justify="left",
+    ).grid(row=1, column=0, sticky="w", pady=(8, 2))
 
+    ttk.Label(
+        shape_form_tab,
+        text="Les profils utilisés doivent avoir des hauteurs strictement croissantes.",
+        style="Vaso.TLabel",
+        justify="left",
+    ).grid(row=2, column=0, sticky="w", pady=(0, 0))
 
+    profiles_table_frame.columnconfigure(1, weight=1)
+    profiles_table_frame.columnconfigure(2, weight=1)
+    profiles_table_frame.columnconfigure(3, weight=1)
+    profiles_table_frame.columnconfigure(4, weight=1)
 
-    shape_frame.columnconfigure(1, weight=1)
+    def update_profile_fields_state(event=None) -> None:
+        try:
+            active_count = int(profile_count_var.get())
+        except Exception:
+            active_count = 3
+
+        active_count = max(3, min(10, active_count))
+
+        for i in range(10):
+            state = "normal" if i < active_count else "disabled"
+
+            profile_z_entries[i].configure(state=state)
+            profile_diameter_entries[i].configure(state=state)
+            profile_sides_entries[i].configure(state=state)
+            profile_rotation_entries[i].configure(state=state)
 
     def on_shading_change(value: str) -> None:
         try:
@@ -858,10 +953,6 @@ def main() -> None:
     canvas_top = FigureCanvasTkAgg(figure_top, master=top_preview_frame)
     canvas_top_widget = canvas_top.get_tk_widget()
     canvas_top_widget.pack(fill="both", expand=True)
-
-
-    buttons_frame = ttk.Frame(general_tab, style="Vaso.TFrame")
-    buttons_frame.grid(row=2, column=1, sticky="n", pady=(2, 0))
 
 
     # Options
@@ -1369,26 +1460,6 @@ def main() -> None:
 
         profile_count = rng.randint(3, 10)
 
-        d_bottom_max = max(25, int(usable_diameter_max * 0.55))
-        d_bottom = rng.randint(25, d_bottom_max)
-
-        d_middle_min = max(d_bottom + 10, 45)
-        d_middle_max = max(d_middle_min, int(usable_diameter_max * 0.92))
-        d_middle = rng.randint(d_middle_min, d_middle_max)
-
-        d_top_min = 20
-        d_top_max = max(d_top_min, int(usable_diameter_max * 0.65))
-        d_top = rng.randint(d_top_min, d_top_max)
-
-        s_bottom = rng.randint(3, 10)
-        s_middle = rng.randint(3, 12)
-        s_top = rng.randint(3, 10)
-
-        rot_middle = rng.randint(0, 45)
-        rot_top = rng.randint(0, 90)
-
-        middle_height_ratio = rng.randint(38, 62)
-
         height_var.set(str(height))
         wall_var.set(f"{wall:.1f}")
         bottom_var.set(f"{bottom:.1f}")
@@ -1396,17 +1467,32 @@ def main() -> None:
         vertical_var.set(str(vertical))
         profile_count_var.set(str(profile_count))
 
-        d_bottom_var.set(str(d_bottom))
-        d_middle_var.set(str(d_middle))
-        d_top_var.set(str(d_top))
+        active_z_values = sorted(rng.sample(range(8, 99), profile_count - 2))
+        active_z_values = [0] + active_z_values + [100]
 
-        s_bottom_var.set(str(s_bottom))
-        s_middle_var.set(str(s_middle))
-        s_top_var.set(str(s_top))
+        previous_diameter = rng.randint(25, max(30, int(usable_diameter_max * 0.55)))
+        for i in range(profile_count):
+            if i == 0:
+                diameter = previous_diameter
+            else:
+                diameter = rng.randint(20, int(usable_diameter_max * 0.92))
+                previous_diameter = diameter
 
-        rot_middle_var.set(str(rot_middle))
-        rot_top_var.set(str(rot_top))
-        middle_height_ratio_var.set(str(middle_height_ratio))
+            sides = rng.randint(3, 12)
+            rotation = rng.randint(0, 90)
+
+            z_ratio_vars[i].set(str(active_z_values[i]))
+            diameter_vars[i].set(str(diameter))
+            sides_vars[i].set(str(sides))
+            rotation_vars[i].set(str(rotation))
+
+        for i in range(profile_count, 10):
+            z_ratio_vars[i].set("100")
+            diameter_vars[i].set(diameter_vars[profile_count - 1].get())
+            sides_vars[i].set(sides_vars[profile_count - 1].get())
+            rotation_vars[i].set(rotation_vars[profile_count - 1].get())
+
+        update_profile_fields_state()
 
 
 
@@ -1418,15 +1504,10 @@ def main() -> None:
             radial_var=radial_var,
             vertical_var=vertical_var,
             profile_count_var=profile_count_var,
-            d_bottom_var=d_bottom_var,
-            d_middle_var=d_middle_var,
-            d_top_var=d_top_var,
-            s_bottom_var=s_bottom_var,
-            s_middle_var=s_middle_var,
-            s_top_var=s_top_var,
-            rot_middle_var=rot_middle_var,
-            rot_top_var=rot_top_var,
-            middle_height_ratio_var=middle_height_ratio_var,
+            z_ratio_vars=z_ratio_vars,
+            diameter_vars=diameter_vars,
+            sides_vars=sides_vars,
+            rotation_vars=rotation_vars,
         )
 
 
@@ -1507,6 +1588,7 @@ def main() -> None:
 
     theme_combo.bind("<<ComboboxSelected>>", on_theme_change)
     printer_profile_combo.bind("<<ComboboxSelected>>", on_printer_profile_selected)
+    profile_count_var.trace_add("write", lambda *args: update_profile_fields_state())
 
     ttk.Button(
         buttons_frame,
@@ -1553,6 +1635,7 @@ def main() -> None:
 
     refresh_printer_profile_combo_values()
     printer_profile_var.set(active_printer_profile["name"])
+    update_profile_fields_state()
 
 
     try:

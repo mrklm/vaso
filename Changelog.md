@@ -7,6 +7,13 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [0.2.10] — 2026-03-15
+
+### Modifié
+
+ - Parametres généraux et forme du vase mainteant dans une fenetre divisée en deux onglets
+
+
 ## [0.2.9] — 2026-03-15
 
 ### Modifié
