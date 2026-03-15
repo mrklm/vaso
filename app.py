@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.3.6"
+APP_VERSION = "0.3.7"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -178,10 +178,15 @@ TEXTURE_TYPE_NAMES = [
     "Anneaux",
     "Spirale",
     "Double spirale",
+    "Triple spirale",
     "Bulles",
     "Hexagones",
     "LowPoly",
     "Martelé",
+    "Écailles",
+    "Diamants",
+    "Tressage",
+    "Vagues",
 ]
 
 TEXTURE_ZOOM_NAMES = [

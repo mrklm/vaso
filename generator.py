@@ -166,6 +166,11 @@ def _apply_texture_to_contour(
             2.0 * angles + 2.0 * np.pi * (base_frequency * 0.26) * z_ratio
         )
 
+    elif texture_type == "Triple spirale":
+        offset = amplitude_mm * envelope * np.sin(
+            3.0 * angles + 2.0 * np.pi * (base_frequency * 0.24) * z_ratio
+        )
+
     elif texture_type == "Bulles":
         bubble_field = np.exp(
             -(
@@ -198,6 +203,37 @@ def _apply_texture_to_contour(
             + 0.25 * np.sin(9.7 * angles - 2.0 * np.pi * 1.7 * z_ratio)
             + 0.15 * np.cos(13.1 * angles + 2.0 * np.pi * 4.2 * z_ratio)
         )
+
+    elif texture_type == "Écailles":
+        scales = np.maximum(
+            0.0,
+            np.sin(base_frequency * angles)
+        ) * np.sin(
+            2.0 * np.pi * max(2.0, base_frequency * 0.58) * z_ratio
+        )
+        offset = amplitude_mm * envelope * scales
+
+    elif texture_type == "Diamants":
+        diamonds = np.sin(base_frequency * angles) * np.sin(
+            2.0 * np.pi * max(2.0, base_frequency * 0.72) * z_ratio
+        )
+        offset = amplitude_mm * envelope * np.sign(diamonds) * np.sqrt(np.abs(diamonds))
+
+    elif texture_type == "Tressage":
+        braid_a = np.sin(
+            2.0 * angles + 2.0 * np.pi * (base_frequency * 0.32) * z_ratio
+        )
+        braid_b = np.sin(
+            2.0 * angles - 2.0 * np.pi * (base_frequency * 0.32) * z_ratio
+        )
+        offset = amplitude_mm * envelope * 0.5 * (braid_a + braid_b)
+
+    elif texture_type == "Vagues":
+        waves = (
+            0.70 * np.sin(angles + 2.0 * np.pi * (base_frequency * 0.20) * z_ratio)
+            + 0.30 * np.sin(3.0 * angles - 2.0 * np.pi * (base_frequency * 0.12) * z_ratio)
+        )
+        offset = amplitude_mm * envelope * waves
 
     else:
         return pts

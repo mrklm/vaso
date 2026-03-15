@@ -7,6 +7,13 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [0.3.7] - 2026-03-15
+
+### Ajouté
+
+ - Ajout de textures
+
+
 ## [0.3.6] - 2026-03-15
 
 ### Ajouté
