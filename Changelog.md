@@ -7,13 +7,20 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [0.3.0] - 2026-03-15
+
+### Ajouté
+
+ - Parametres d'aléatoire 
+
+
 ## [0.2.15] — 2026-03-15
 
 ### Modifié
 
  - Indications "style de vase" reduites
 
- 
+
 ## [0.2.14] — 2026-03-15
 
 ### Modifié
