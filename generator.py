@@ -111,11 +111,11 @@ def _interpolate_contours(c1: np.ndarray, c2: np.ndarray, t: float) -> np.ndarra
 
 def _texture_zoom_to_params(texture_zoom: str) -> tuple[float, float]:
     mapping = {
-        "Très fin": (0.7, 20.0),
-        "Fin": (1.2, 13.0),
-        "Moyen": (2.0, 8.0),
-        "Gros": (3.0, 5.0),
-        "Très gros": (4.2, 3.0),
+        "Très fin": (1.0, 22.0),
+        "Fin": (1.8, 14.0),
+        "Moyen": (3.0, 9.0),
+        "Gros": (4.4, 5.5),
+        "Très gros": (6.0, 3.2),
     }
     return mapping.get(texture_zoom, mapping["Moyen"])
 
@@ -139,66 +139,68 @@ def _apply_texture_to_contour(
 
     z_ratio = 0.0 if params.height_mm <= 0 else float(z_mm) / float(params.height_mm)
 
-    x = pts[:, 0]
-    y = pts[:, 1]
     radii = np.linalg.norm(pts, axis=1)
     safe_radii = np.maximum(radii, 1e-9)
-    angles = np.arctan2(y, x)
+    angles = np.arctan2(pts[:, 1], pts[:, 0])
+
+    envelope = 0.55 + 0.45 * np.sin(np.pi * z_ratio)
 
     if texture_type == "Cannelures":
-        offset = amplitude_mm * np.cos(base_frequency * angles)
+        offset = amplitude_mm * envelope * np.cos(base_frequency * angles)
 
     elif texture_type == "Anneaux":
-        offset = amplitude_mm * np.sin(
-            2.0 * np.pi * (base_frequency * 1.4) * z_ratio
+        offset = amplitude_mm * envelope * np.sin(
+            2.0 * np.pi * (base_frequency * 1.55) * z_ratio
         ) * np.ones_like(radii)
 
     elif texture_type == "Spirale":
-        offset = amplitude_mm * np.sin(
-            angles + 2.0 * np.pi * (base_frequency * 0.24) * z_ratio
+        offset = amplitude_mm * envelope * np.sin(
+            angles + 2.0 * np.pi * (base_frequency * 0.26) * z_ratio
         )
 
     elif texture_type == "Double spirale":
-        offset = amplitude_mm * np.sin(
-            2.0 * angles + 2.0 * np.pi * (base_frequency * 0.24) * z_ratio
+        offset = amplitude_mm * envelope * np.sin(
+            2.0 * angles + 2.0 * np.pi * (base_frequency * 0.26) * z_ratio
         )
 
     elif texture_type == "Bulles":
-        offset = amplitude_mm * (
-            np.exp(
-                -(
-                    2.4 * np.sin(base_frequency * angles) ** 2
-                    + 2.0 * np.sin(2.0 * np.pi * max(2.0, base_frequency * 0.55) * z_ratio) ** 2
-                )
-            ) - 0.35
+        bubble_field = np.exp(
+            -(
+                2.8 * np.sin(base_frequency * angles) ** 2
+                + 2.2 * np.sin(2.0 * np.pi * max(2.0, base_frequency * 0.62) * z_ratio) ** 2
+            )
         )
+        offset = amplitude_mm * envelope * (bubble_field - 0.30)
 
     elif texture_type == "Hexagones":
-        cell = np.sin(base_frequency * angles) * np.sin(
-            2.0 * np.pi * max(2.0, base_frequency * 0.60) * z_ratio
+        cell = (
+            np.sin(base_frequency * angles)
+            * np.sin(2.0 * np.pi * max(2.0, base_frequency * 0.65) * z_ratio)
         )
-        quantized = np.round(cell * 3.0) / 3.0
-        offset = amplitude_mm * quantized
+        quantized = np.round(cell * 4.0) / 4.0
+        offset = amplitude_mm * envelope * quantized
 
     elif texture_type == "LowPoly":
         step = (2.0 * np.pi) / max(6, int(round(base_frequency)))
         angle_quant = np.round(angles / step) * step
-        offset = amplitude_mm * np.cos(angle_quant * max(3.0, base_frequency * 0.65))
+        offset = amplitude_mm * envelope * np.sign(
+            np.cos(angle_quant * max(3.0, base_frequency * 0.8))
+        )
 
     elif texture_type == "Martelé":
-        offset = amplitude_mm * (
-            0.55 * np.sin(5.3 * angles + 2.0 * np.pi * 3.0 * z_ratio)
-            + 0.30 * np.sin(9.7 * angles - 2.0 * np.pi * 1.7 * z_ratio)
+        offset = amplitude_mm * envelope * (
+            0.60 * np.sin(5.3 * angles + 2.0 * np.pi * 3.0 * z_ratio)
+            + 0.25 * np.sin(9.7 * angles - 2.0 * np.pi * 1.7 * z_ratio)
             + 0.15 * np.cos(13.1 * angles + 2.0 * np.pi * 4.2 * z_ratio)
         )
 
     else:
         return pts
 
-    max_safe_offset = np.maximum(0.35, radii - params.wall_thickness_mm - 0.8)
-    offset = np.clip(offset, -0.90 * max_safe_offset, 0.90 * max_safe_offset)
+    max_safe_offset = np.maximum(0.6, radii - params.wall_thickness_mm - 1.0)
+    offset = np.clip(offset, -0.92 * max_safe_offset, 0.92 * max_safe_offset)
 
-    new_radii = np.maximum(radii + offset, params.wall_thickness_mm + 0.8)
+    new_radii = np.maximum(radii + offset, params.wall_thickness_mm + 1.0)
     scale = new_radii / safe_radii
 
     pts[:, 0] *= scale
