@@ -8,6 +8,13 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [0.2.7] — 2026-03-14
+
+### Modifié
+
+ - Mise en valeur du texte dans la section Aide
+
+
 ## [0.2.6] — 2026-03-14
 
 ### Ajouté

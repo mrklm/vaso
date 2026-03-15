@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.2.6"
+APP_VERSION = "0.2.7"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -162,6 +162,24 @@ def load_help_text(base_dir: Path) -> str:
         "Créez le fichier : assets/aide.md\n"
         "pour afficher l'aide dans cet onglet."
     )
+
+def render_markdown_into_text(widget: scrolledtext.ScrolledText, markdown_text: str) -> None:
+    widget.configure(state="normal")
+    widget.delete("1.0", "end")
+
+    for line in markdown_text.splitlines(keepends=True):
+        if line.startswith("### "):
+            widget.insert("end", line[4:], ("h3",))
+        elif line.startswith("## "):
+            widget.insert("end", line[3:], ("h2",))
+        elif line.startswith("# "):
+            widget.insert("end", line[2:], ("h1",))
+        elif line.startswith("- "):
+            widget.insert("end", f"• {line[2:]}", ("bullet",))
+        else:
+            widget.insert("end", line, ("body",))
+
+    widget.configure(state="disabled")    
 
 
 def _interp_float(a: float, b: float, t: float) -> float:
@@ -430,6 +448,12 @@ def apply_theme(
         selectbackground=accent,
         selectforeground=bg,
     )
+
+    help_text_widget.tag_configure("body", foreground=field_fg)
+    help_text_widget.tag_configure("h1", foreground=accent)
+    help_text_widget.tag_configure("h2", foreground=accent)
+    help_text_widget.tag_configure("h3", foreground=accent)
+    help_text_widget.tag_configure("bullet", foreground=field_fg)
 
     canvas_side.draw_idle()
     canvas_top.draw_idle()
@@ -871,13 +895,52 @@ def main() -> None:
     help_text = scrolledtext.ScrolledText(
         help_tab,
         wrap="word",
-        font=("Consolas", 10),
         relief="flat",
         borderwidth=0,
     )
     help_text.grid(row=0, column=0, sticky="nsew")
-    help_text.insert("1.0", load_help_text(base_dir))
-    help_text.configure(state="disabled")
+
+    help_text.tag_configure(
+        "body",
+        font=("Segoe UI", 10),
+        justify="center",
+        spacing1=2,
+        spacing3=2,
+    )
+
+    help_text.tag_configure(
+        "h1",
+        font=("Segoe UI", 16, "bold"),
+        spacing1=12,
+        spacing3=10,
+        justify="center",
+    )
+
+    help_text.tag_configure(
+        "h2",
+        font=("Segoe UI", 13, "bold"),
+        spacing1=10,
+        spacing3=8,
+        justify="center",
+    )
+
+    help_text.tag_configure(
+        "h3",
+        font=("Segoe UI", 11, "bold"),
+        spacing1=8,
+        spacing3=6,
+        justify="center",
+    )
+
+    help_text.tag_configure(
+        "bullet",
+        font=("Segoe UI", 10),
+        spacing1=2,
+        spacing3=2,
+        justify="center",
+    )
+
+    render_markdown_into_text(help_text, load_help_text(base_dir))
 
     def draw_preview(params: VaseParameters) -> None:
         preview_params = build_preview_params(params)
