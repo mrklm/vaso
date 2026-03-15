@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.2.11"
+APP_VERSION = "0.2.12"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -899,12 +899,34 @@ def main() -> None:
         active_count = max(3, min(10, active_count))
 
         for i in range(10):
-            state = "normal" if i < active_count else "disabled"
+            if i < active_count:
+                profile_row_labels[i].configure(text=f"P{i + 1}")
 
-            profile_z_entries[i].configure(state=state)
-            profile_diameter_entries[i].configure(state=state)
-            profile_sides_entries[i].configure(state=state)
-            profile_rotation_entries[i].configure(state=state)
+                if profile_z_entries[i].cget("state") == "disabled":
+                    profile_z_entries[i].configure(state="normal")
+                if profile_diameter_entries[i].cget("state") == "disabled":
+                    profile_diameter_entries[i].configure(state="normal")
+                if profile_sides_entries[i].cget("state") == "disabled":
+                    profile_sides_entries[i].configure(state="normal")
+                if profile_rotation_entries[i].cget("state") == "disabled":
+                    profile_rotation_entries[i].configure(state="normal")
+            else:
+                profile_row_labels[i].configure(text=f"P{i + 1}")
+
+                profile_z_entries[i].configure(state="normal")
+                profile_diameter_entries[i].configure(state="normal")
+                profile_sides_entries[i].configure(state="normal")
+                profile_rotation_entries[i].configure(state="normal")
+
+                z_ratio_vars[i].set("X")
+                diameter_vars[i].set("X")
+                sides_vars[i].set("X")
+                rotation_vars[i].set("X")
+
+                profile_z_entries[i].configure(state="disabled")
+                profile_diameter_entries[i].configure(state="disabled")
+                profile_sides_entries[i].configure(state="disabled")
+                profile_rotation_entries[i].configure(state="disabled")
 
     def on_shading_change(value: str) -> None:
         try:
@@ -1495,10 +1517,10 @@ def main() -> None:
             rotation_vars[i].set(str(rotation))
 
         for i in range(profile_count, 10):
-            z_ratio_vars[i].set("100")
-            diameter_vars[i].set(diameter_vars[profile_count - 1].get())
-            sides_vars[i].set(sides_vars[profile_count - 1].get())
-            rotation_vars[i].set(rotation_vars[profile_count - 1].get())
+            z_ratio_vars[i].set("X")
+            diameter_vars[i].set("X")
+            sides_vars[i].set("X")
+            rotation_vars[i].set("X")
 
         update_profile_fields_state()
 
@@ -1539,7 +1561,9 @@ def main() -> None:
             randomize_fields()
             params = build_current_params()
             draw_preview(params)
-            status_var.set("Nouvelle seed aléatoire générée.")
+            status_var.set(
+                f"Nouvelle seed aléatoire générée — {len(params.profiles)} profils actifs."
+            )
         except ValueError as exc:
             status_var.set("Seed ou paramètres invalides.")
             messagebox.showerror(APP_NAME, f"Valeur invalide :\n{exc}")

@@ -7,11 +7,18 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [0.2.12] — 2026-03-15
+
+### Modifié
+
+ - L'aleatoire genere bien entre 3 et 10 polygones et indique X pour les polygones non générés 
+
+
 ## [0.2.11] — 2026-03-15
 
 ### Modifié
 
- - fenêtres de droite remises l'une au dessus de l'autre
+ - fentres de droite remises l'une au dessus de l'autre
  - Boutons centrés
 
 
