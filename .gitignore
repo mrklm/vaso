@@ -1,12 +1,32 @@
+# --- Python / environnement ---
+
 .venv/
-__pycache__/
+**pycache**/
 *.pyc
 *.pyo
 *.pyd
+
+# --- Build / packaging ---
+
 build/
 dist/
 *.spec
+
+# --- Fichiers système (Windows / macOS) ---
+
 Thumbs.db
 Desktop.ini
+.DS_Store
+
+# --- Fichiers générés par l'app ---
+
+settings.json
 *.stl
 *.gcode
+
+# --- Notes personnelles (hors projet) ---
+
+*.pdf
+*.odt
+*.odf
+*.ods
