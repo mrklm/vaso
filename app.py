@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "0.3.8"
+APP_VERSION = "0.3.9"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -195,6 +195,11 @@ TEXTURE_ZOOM_NAMES = [
     "Moyen",
     "Gros",
     "Très gros",
+]
+
+PREVIEW_3D_MODE_NAMES = [
+    "Normal",
+    "Relief renforcé",
 ]
 
 
@@ -666,6 +671,10 @@ def build_shaded_facecolors(
     light_dir: tuple[float, float, float] = (-0.9, -1.0, 1.8),
     ambient: float = 0.16,
     alpha: float = 0.98,
+    specular_strength: float = 0.22,
+    rim_strength: float = 0.18,
+    contrast_center: float = 0.72,
+    contrast_gain: float = 1.55,
 ) -> np.ndarray:
     base_rgb = np.array(mcolors.to_rgb(base_hex_color), dtype=float)
 
@@ -700,20 +709,18 @@ def build_shaded_facecolors(
 
     lambert = np.clip(ambient + 0.92 * diffuse, 0.0, 1.0)
     lighting = np.clip(
-        lambert + 0.22 * specular + 0.18 * rim,
+        lambert + specular_strength * specular + rim_strength * rim,
         0.0,
-        1.35,
+        1.50,
     )
 
     shading_strength = float(np.clip(shading_strength, 0.0, 1.0))
     lighting = 1.0 + (lighting - 1.0) * shading_strength
 
-    contrast_center = 0.72
-    contrast_gain = 1.55
     lighting = np.clip(
         contrast_center + (lighting - contrast_center) * contrast_gain,
         0.0,
-        1.45,
+        1.60,
     )
 
     face_rgb = np.clip(base_rgb[None, :] * lighting[:, None], 0.0, 1.0)
@@ -723,6 +730,41 @@ def build_shaded_facecolors(
     facecolors[:, 3] = alpha
 
     return facecolors
+
+
+def get_preview_3d_render_config(mode_name: str) -> dict:
+    if mode_name == "Relief renforcé":
+        return {
+            "light_dir": (-1.25, -1.35, 1.45),
+            "ambient": 0.08,
+            "alpha": 0.995,
+            "specular_strength": 0.30,
+            "rim_strength": 0.28,
+            "contrast_center": 0.68,
+            "contrast_gain": 1.95,
+            "linewidths": 0.0,
+            "edgecolors": "none",
+            "antialiased": False,
+            "view_elev": 26,
+            "view_azim": 42,
+            "status_label": "Relief renforcé",
+        }
+
+    return {
+        "light_dir": (-0.9, -1.0, 1.8),
+        "ambient": 0.16,
+        "alpha": 0.98,
+        "specular_strength": 0.22,
+        "rim_strength": 0.18,
+        "contrast_center": 0.72,
+        "contrast_gain": 1.55,
+        "linewidths": 0.0,
+        "edgecolors": "none",
+        "antialiased": False,
+        "view_elev": 24,
+        "view_azim": 38,
+        "status_label": "Normal",
+    }
 
 
 def main() -> None:
@@ -764,6 +806,7 @@ def main() -> None:
     random_style_var = tk.StringVar(value="Pur aléatoire")
     texture_type_var = tk.StringVar(value="Pas de texture")
     texture_zoom_var = tk.StringVar(value="Moyen")
+    preview_3d_mode_var = tk.StringVar(value="Normal")
     shading_var = tk.DoubleVar(value=68.0)
     shading_label_var = tk.StringVar(value="68 %")
 
@@ -1144,6 +1187,14 @@ def main() -> None:
         except Exception:
             pass
 
+    def on_preview_3d_mode_change(event=None) -> None:
+        try:
+            params = build_current_params()
+            draw_preview(params)
+            status_var.set(f"Mode 3D : {preview_3d_mode_var.get()}.")
+        except Exception:
+            pass
+
     def on_shading_change(value: str) -> None:
         try:
             shading_percent = float(value)
@@ -1159,10 +1210,28 @@ def main() -> None:
     preview_3d_controls = ttk.Frame(preview_3d_frame, style="Vaso.TFrame")
     preview_3d_controls.pack(fill="x", pady=(0, 8))
 
-    ttk.Label(preview_3d_controls, text="Ombrage", style="Vaso.TLabel").pack(side="left")
+    preview_3d_mode_row = ttk.Frame(preview_3d_controls, style="Vaso.TFrame")
+    preview_3d_mode_row.pack(fill="x", pady=(0, 6))
+
+    ttk.Label(preview_3d_mode_row, text="Mode 3D", style="Vaso.TLabel").pack(side="left")
+
+    preview_3d_mode_combo = ttk.Combobox(
+        preview_3d_mode_row,
+        textvariable=preview_3d_mode_var,
+        values=PREVIEW_3D_MODE_NAMES,
+        state="readonly",
+        width=18,
+        style="Vaso.TCombobox",
+    )
+    preview_3d_mode_combo.pack(side="left", padx=(8, 0))
+
+    preview_3d_shading_row = ttk.Frame(preview_3d_controls, style="Vaso.TFrame")
+    preview_3d_shading_row.pack(fill="x")
+
+    ttk.Label(preview_3d_shading_row, text="Ombrage", style="Vaso.TLabel").pack(side="left")
 
     shading_scale = ttk.Scale(
-        preview_3d_controls,
+        preview_3d_shading_row,
         from_=0.0,
         to=100.0,
         orient="horizontal",
@@ -1173,7 +1242,7 @@ def main() -> None:
     shading_scale.pack(side="left", fill="x", expand=True, padx=(8, 8))
 
     shading_value_label = ttk.Label(
-        preview_3d_controls,
+        preview_3d_shading_row,
         textvariable=shading_label_var,
         style="Vaso.TLabel",
         width=6,
@@ -1453,25 +1522,31 @@ def main() -> None:
         ax_top.locator_params(axis="y", nbins=5)
         ax_top.tick_params(labelsize=8)
 
-        # --- Aperçu 3D renforcé + shading plus contrasté
+        # --- Aperçu 3D : mode configurable
+        render_cfg = get_preview_3d_render_config(preview_3d_mode_var.get())
+
         triangles = vertices[faces]
         shaded_facecolors = build_shaded_facecolors(
             triangles=triangles,
             base_hex_color=colors["ACCENT"],
             shading_strength=float(shading_var.get()) / 100.0,
-            light_dir=(-0.9, -1.0, 1.8),
-            ambient=0.16,
-            alpha=0.98,
+            light_dir=render_cfg["light_dir"],
+            ambient=render_cfg["ambient"],
+            alpha=render_cfg["alpha"],
+            specular_strength=render_cfg["specular_strength"],
+            rim_strength=render_cfg["rim_strength"],
+            contrast_center=render_cfg["contrast_center"],
+            contrast_gain=render_cfg["contrast_gain"],
         )
 
         mesh = Poly3DCollection(
             triangles,
-            linewidths=0.0,
-            edgecolors="none",
-            antialiased=False,
+            linewidths=render_cfg["linewidths"],
+            edgecolors=render_cfg["edgecolors"],
+            antialiased=render_cfg["antialiased"],
         )
         mesh.set_facecolors(shaded_facecolors)
-        mesh.set_edgecolor("none")
+        mesh.set_edgecolor(render_cfg["edgecolors"])
         ax_3d.add_collection3d(mesh)
 
 
@@ -1510,7 +1585,10 @@ def main() -> None:
         except Exception:
             pass
 
-        ax_3d.view_init(elev=24, azim=38)
+        ax_3d.view_init(
+            elev=render_cfg["view_elev"],
+            azim=render_cfg["view_azim"],
+        )
 
         apply_theme(
             root=root,
@@ -1992,8 +2070,7 @@ def main() -> None:
     theme_combo.bind("<<ComboboxSelected>>", on_theme_change)
     printer_profile_combo.bind("<<ComboboxSelected>>", on_printer_profile_selected)
     random_style_combo.bind("<<ComboboxSelected>>", update_random_style_info)
-    texture_type_combo.bind("<<ComboboxSelected>>", on_texture_controls_change)
-    texture_zoom_combo.bind("<<ComboboxSelected>>", on_texture_controls_change)
+    preview_3d_mode_combo.bind("<<ComboboxSelected>>", on_preview_3d_mode_change)
     profile_count_var.trace_add("write", lambda *args: update_profile_fields_state())
 
     ttk.Button(

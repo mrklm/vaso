@@ -7,6 +7,14 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [0.3.9] - 2026-03-15
+
+### Modifié
+
+ - Double mode d’affichage 3D
+ - éclairage 3D plus sophistiqué 
+
+
 ## [0.3.8] - 2026-03-15
 
 ### Modifié
