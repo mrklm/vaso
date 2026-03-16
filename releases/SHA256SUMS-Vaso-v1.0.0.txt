@@ -1,0 +1,1 @@
+d55f3296ac68c23f7882ddb93a02355fc79025aaed5f656fd4b4b7a9b5ae01ae  Vaso-v1.0.0-windows-x86_64.zip
