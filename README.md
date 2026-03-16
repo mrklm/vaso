@@ -20,8 +20,7 @@ Le projet permet de créer des vases à partir de plusieurs profils squelettes p
 ## 💾 Applications standalone (recommandé)
 
 - 🐧 **Linux**
-  - [Vaso-v1.0.0-linux-x86_64]
-(https://github.com/mrklm/vaso/releases)
+  - [Vaso-v1.0.0-linux-x86_64](https://github.com/mrklm/vaso/releases)
   
   
 - 🍎 **macOS**
