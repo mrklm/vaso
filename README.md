@@ -12,6 +12,8 @@ Le programme permet de créer des vases à partir de profils polygonaux interpol
 ![Fenêtre general](screenshots/vaso_2.png)  
 ![Fenêtre options](screenshots/vaso_3.png)  
 ![Fenêtre aide](screenshots/vaso_4.png)
+![Fenêtre exemples](screenshots/vaso_5.png)
+
 
 ---
 
