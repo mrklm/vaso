@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "1.0.2"
+APP_VERSION = "1.0.3"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -1212,49 +1212,37 @@ def main() -> None:
     profiles_table_frame.columnconfigure(4, weight=0)
 
 
-    def update_profile_fields_state(event=None) -> None:
+    def update_profile_fields_state(*_args) -> None:
         try:
             active_count = int(profile_count_var.get())
         except Exception:
             active_count = 2
 
-        active_count = max(2, min(10, active_count))
+        clamped_count = max(2, min(10, active_count))
+
+        if str(clamped_count) != profile_count_var.get():
+            profile_count_var.set(str(clamped_count))
+            return
+
+        active_count = clamped_count
+
+        active_entries = (
+            profile_z_entries,
+            profile_diameter_entries,
+            profile_sides_entries,
+            profile_rotation_entries,
+        )
 
         for i in range(10):
-            if i < active_count:
-                profile_row_labels[i].configure(text=f"P{i + 1}")
+            profile_row_labels[i].configure(text=f"P{i + 1}")
 
-                if profile_z_entries[i].cget("state") == "disabled":
-                    profile_z_entries[i].configure(state="normal")
-                if profile_diameter_entries[i].cget("state") == "disabled":
-                    profile_diameter_entries[i].configure(state="normal")
-                if profile_sides_entries[i].cget("state") == "disabled":
-                    profile_sides_entries[i].configure(state="normal")
-                if profile_rotation_entries[i].cget("state") == "disabled":
-                    profile_rotation_entries[i].configure(state="normal")
-            else:
-                profile_row_labels[i].configure(text=f"P{i + 1}")
+            state = "normal" if i < active_count else "disabled"
 
-                profile_z_entries[i].configure(state="normal")
-                profile_diameter_entries[i].configure(state="normal")
-                profile_sides_entries[i].configure(state="normal")
-                profile_rotation_entries[i].configure(state="normal")
+            for entry_list in active_entries:
+                entry_list[i].configure(state=state)
 
-                z_ratio_vars[i].set("X")
-                diameter_vars[i].set("X")
-                sides_vars[i].set("X")
-                rotation_vars[i].set("X")
-
-                profile_z_entries[i].configure(state="disabled")
-                profile_diameter_entries[i].configure(state="disabled")
-                profile_sides_entries[i].configure(state="disabled")
-                profile_rotation_entries[i].configure(state="disabled")
-
-        # Toujours forcer les bornes des profils actifs
-        if active_count >= 1:
-            z_ratio_vars[0].set("0")
-        if active_count >= 2:
-            z_ratio_vars[active_count - 1].set("100")
+        z_ratio_vars[0].set("0")
+        z_ratio_vars[active_count - 1].set("100")
 
 
     def update_random_complexity_state() -> None:
@@ -1326,6 +1314,7 @@ def main() -> None:
         except Exception:
             pass
 
+    profile_count_var.trace_add("write", update_profile_fields_state)
 
     preview_3d_controls = ttk.Frame(preview_3d_frame, style="Vaso.TFrame")
     preview_3d_controls.pack(fill="x", pady=(0, 8))
@@ -1970,6 +1959,8 @@ def main() -> None:
         profile_count = max(2, min(10, profile_count))
 
         profile_count_var.set(str(profile_count))
+        update_profile_fields_state()
+
 
         height_max_int = max(60, int(height_max))
         height_ratio_min = complexity["height_ratio_min"]
@@ -2128,7 +2119,6 @@ def main() -> None:
             texture_type_var.set(random_texture_name)
             texture_zoom_var.set(random_zoom_name)
 
-        update_profile_fields_state()
 
     def build_current_params() -> VaseParameters:
         params = build_params_from_ui(

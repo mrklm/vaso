@@ -288,18 +288,44 @@ def _apply_texture_to_contour(
         )
 
     if texture_mode == "Double texture":
+        texture_type_1 = getattr(params, "texture_type", "Pas de texture")
+        texture_zoom_1 = getattr(params, "texture_zoom", "Moyen")
+        texture_type_2 = getattr(params, "texture_type_2", "Pas de texture")
+        texture_zoom_2 = getattr(params, "texture_zoom_2", "Moyen")
+
+        if texture_type_1 == "Pas de texture" and texture_type_2 == "Pas de texture":
+            return contour
+
+        if texture_type_1 != "Pas de texture" and texture_type_2 == "Pas de texture":
+            return _apply_single_texture_to_contour(
+                contour=contour,
+                z_mm=z_mm,
+                texture_type=texture_type_1,
+                texture_zoom=texture_zoom_1,
+                params=params,
+            )
+
+        if texture_type_1 == "Pas de texture" and texture_type_2 != "Pas de texture":
+            return _apply_single_texture_to_contour(
+                contour=contour,
+                z_mm=z_mm,
+                texture_type=texture_type_2,
+                texture_zoom=texture_zoom_2,
+                params=params,
+            )
+
         contour_1 = _apply_single_texture_to_contour(
             contour=contour,
             z_mm=z_mm,
-            texture_type=getattr(params, "texture_type", "Pas de texture"),
-            texture_zoom=getattr(params, "texture_zoom", "Moyen"),
+            texture_type=texture_type_1,
+            texture_zoom=texture_zoom_1,
             params=params,
         )
         contour_2 = _apply_single_texture_to_contour(
             contour=contour,
             z_mm=z_mm,
-            texture_type=getattr(params, "texture_type_2", "Pas de texture"),
-            texture_zoom=getattr(params, "texture_zoom_2", "Moyen"),
+            texture_type=texture_type_2,
+            texture_zoom=texture_zoom_2,
             params=params,
         )
         return (contour_1 + contour_2) / 2.0
