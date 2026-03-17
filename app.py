@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "1.0.4"
+APP_VERSION = "1.0.5"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -2106,6 +2106,43 @@ def main() -> None:
             rotation_vars[i].set(str(rotations[i]))
 
         if texture_mode_var.get() == "Texture aléatoire":
+            random_texture_name = rng.choices(
+                [name for name in TEXTURE_TYPE_NAMES if name != "Pas de texture"],
+                weights=[1] * (len(TEXTURE_TYPE_NAMES) - 1),
+                k=1,
+            )[0]
+            random_zoom_name = rng.choices(
+                TEXTURE_ZOOM_NAMES,
+                weights=[1, 2, 3, 2, 1],
+                k=1,
+            )[0]
+
+            texture_type_var.set(random_texture_name)
+            texture_zoom_var.set(random_zoom_name)
+            texture_type_2_var.set("Pas de texture")
+            texture_zoom_2_var.set("Moyen")
+
+        elif texture_mode_var.get() == "Double texture aléatoire":
+            random_texture_names = rng.sample(
+                [name for name in TEXTURE_TYPE_NAMES if name != "Pas de texture"],
+                2,
+            )
+
+            random_zoom_name_1 = rng.choices(
+                TEXTURE_ZOOM_NAMES,
+                weights=[1, 2, 3, 2, 1],
+                k=1,
+            )[0]
+            random_zoom_name_2 = rng.choices(
+                TEXTURE_ZOOM_NAMES,
+                weights=[1, 2, 3, 2, 1],
+                k=1,
+            )[0]
+
+            texture_type_var.set(random_texture_names[0])
+            texture_zoom_var.set(random_zoom_name_1)
+            texture_type_2_var.set(random_texture_names[1])
+            texture_zoom_2_var.set(random_zoom_name_2)
 
 
     def build_current_params() -> VaseParameters:

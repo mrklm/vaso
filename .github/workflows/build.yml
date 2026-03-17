@@ -1,0 +1,85 @@
+name: Build Vaso multi-OS
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    name: Build ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: Linux
+            artifact_name: vaso-linux
+          - os: macos-latest
+            label: macOS
+            artifact_name: vaso-macos
+          - os: windows-latest
+            label: Windows
+            artifact_name: vaso-windows
+
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Installer Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Afficher la version Python
+        run: python --version
+
+      - name: Installer les dépendances (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Installer les dépendances (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Donner les droits au script Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: chmod +x build-linux.sh
+
+      - name: Donner les droits au script macOS
+        if: runner.os == 'macOS'
+        shell: bash
+        run: chmod +x build-macos.sh
+
+      - name: Build Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: ./build-linux.sh
+
+      - name: Build macOS
+        if: runner.os == 'macOS'
+        shell: bash
+        run: ./build-macos.sh
+
+      - name: Build Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./build-windows.ps1
+
+      - name: Uploader releases/
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: releases/**
+          if-no-files-found: error
