@@ -124,18 +124,17 @@ def _texture_zoom_to_params(texture_zoom: str) -> tuple[float, float]:
     return mapping.get(texture_zoom, mapping["Moyen"])
 
 
-def _apply_texture_to_contour(
+def _apply_single_texture_to_contour(
     contour: np.ndarray,
     z_mm: float,
+    texture_type: str,
+    texture_zoom: str,
     params: VaseParameters,
 ) -> np.ndarray:
-    texture_type = getattr(params, "texture_type", "Pas de texture")
     if texture_type == "Pas de texture":
         return contour
 
-    amplitude_mm, base_frequency = _texture_zoom_to_params(
-        getattr(params, "texture_zoom", "Moyen")
-    )
+    amplitude_mm, base_frequency = _texture_zoom_to_params(texture_zoom)
 
     pts = np.asarray(contour, dtype=float).copy()
     if len(pts) == 0:
@@ -255,6 +254,57 @@ def _apply_texture_to_contour(
     pts[:, 1] *= scale
 
     return pts
+
+def _apply_texture_to_contour(
+    contour: np.ndarray,
+    z_mm: float,
+    params: VaseParameters,
+) -> np.ndarray:
+    texture_mode = getattr(params, "texture_mode", "Pas de texture")
+
+    if texture_mode == "Pas de texture":
+        return contour
+
+    if texture_mode == "Texture aléatoire":
+        texture_type = getattr(params, "texture_type", "Pas de texture")
+        texture_zoom = getattr(params, "texture_zoom", "Moyen")
+        return _apply_single_texture_to_contour(
+            contour=contour,
+            z_mm=z_mm,
+            texture_type=texture_type,
+            texture_zoom=texture_zoom,
+            params=params,
+        )
+
+    if texture_mode == "Texture imposée":
+        texture_type = getattr(params, "texture_type", "Pas de texture")
+        texture_zoom = getattr(params, "texture_zoom", "Moyen")
+        return _apply_single_texture_to_contour(
+            contour=contour,
+            z_mm=z_mm,
+            texture_type=texture_type,
+            texture_zoom=texture_zoom,
+            params=params,
+        )
+
+    if texture_mode == "Double texture":
+        contour_1 = _apply_single_texture_to_contour(
+            contour=contour,
+            z_mm=z_mm,
+            texture_type=getattr(params, "texture_type", "Pas de texture"),
+            texture_zoom=getattr(params, "texture_zoom", "Moyen"),
+            params=params,
+        )
+        contour_2 = _apply_single_texture_to_contour(
+            contour=contour,
+            z_mm=z_mm,
+            texture_type=getattr(params, "texture_type_2", "Pas de texture"),
+            texture_zoom=getattr(params, "texture_zoom_2", "Moyen"),
+            params=params,
+        )
+        return (contour_1 + contour_2) / 2.0
+
+    return contour    
 
 
 def _max_supportless_radial_step(dz_mm: float) -> float:

@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -195,6 +195,13 @@ TEXTURE_ZOOM_NAMES = [
     "Moyen",
     "Gros",
     "Très gros",
+]
+
+TEXTURE_MODE_NAMES = [
+    "Pas de texture",
+    "Texture aléatoire",
+    "Texture imposée",
+    "Double texture",
 ]
 
 PREVIEW_3D_MODE_NAMES = [
@@ -849,15 +856,17 @@ def main() -> None:
     export_path_var = tk.StringVar(value=str(get_default_export_dir()))
     seed_var = tk.StringVar(value="")
     random_style_var = tk.StringVar(value="Pur aléatoire")
-    texture_type_var = tk.StringVar(value="Pas de texture")
+    texture_mode_var = tk.StringVar(value="Pas de texture")
+    texture_type_var = tk.StringVar(value="Cannelures")
     texture_zoom_var = tk.StringVar(value="Moyen")
+    texture_type_2_var = tk.StringVar(value="Anneaux")
+    texture_zoom_2_var = tk.StringVar(value="Moyen")
     preview_3d_mode_var = tk.StringVar(value="Normal")
     shading_var = tk.DoubleVar(value=68.0)
     shading_label_var = tk.StringVar(value="68 %")
 
     random_complexity_enabled_var = tk.BooleanVar(value=False)
     random_complexity_var = tk.StringVar(value="Moyen")
-    random_texture_enabled_var = tk.BooleanVar(value=False)
 
     printer_profile_var = tk.StringVar(value=active_printer_profile["name"])
     build_width_max_var = tk.StringVar(value=f'{active_printer_profile["width"]:.1f}'.rstrip("0").rstrip("."))
@@ -1061,16 +1070,18 @@ def main() -> None:
     )
     random_complexity_combo.grid(row=9, column=1, sticky="w", pady=4)
 
-    random_texture_check = ttk.Checkbutton(
+    ttk.Label(general_form_tab, text="Textures", style="Vaso.TLabel").grid(row=10, column=0, sticky="w", pady=4)
+    texture_mode_combo = ttk.Combobox(
         general_form_tab,
-        text="Forcer la texture",
-        variable=random_texture_enabled_var,
-        style="Vaso.TCheckbutton",
-        command=lambda: update_random_texture_state(),
+        textvariable=texture_mode_var,
+        values=TEXTURE_MODE_NAMES,
+        state="readonly",
+        width=18,
+        style="Vaso.TCombobox",
     )
-    random_texture_check.grid(row=10, column=0, columnspan=2, sticky="w", pady=4)
+    texture_mode_combo.grid(row=10, column=1, sticky="w", pady=4)
 
-    ttk.Label(general_form_tab, text="Texture", style="Vaso.TLabel").grid(row=11, column=0, sticky="w", pady=4)
+    ttk.Label(general_form_tab, text="Texture 1", style="Vaso.TLabel").grid(row=11, column=0, sticky="w", pady=4)
     texture_type_combo = ttk.Combobox(
         general_form_tab,
         textvariable=texture_type_var,
@@ -1080,6 +1091,39 @@ def main() -> None:
         style="Vaso.TCombobox",
     )
     texture_type_combo.grid(row=11, column=1, sticky="w", pady=4)
+
+    ttk.Label(general_form_tab, text="Zoom texture 1", style="Vaso.TLabel").grid(row=12, column=0, sticky="w", pady=4)
+    texture_zoom_combo = ttk.Combobox(
+        general_form_tab,
+        textvariable=texture_zoom_var,
+        values=TEXTURE_ZOOM_NAMES,
+        state="readonly",
+        width=13,
+        style="Vaso.TCombobox",
+    )
+    texture_zoom_combo.grid(row=12, column=1, sticky="w", pady=4)
+
+    ttk.Label(general_form_tab, text="Texture 2", style="Vaso.TLabel").grid(row=13, column=0, sticky="w", pady=4)
+    texture_type_2_combo = ttk.Combobox(
+        general_form_tab,
+        textvariable=texture_type_2_var,
+        values=TEXTURE_TYPE_NAMES,
+        state="readonly",
+        width=13,
+        style="Vaso.TCombobox",
+    )
+    texture_type_2_combo.grid(row=13, column=1, sticky="w", pady=4)
+
+    ttk.Label(general_form_tab, text="Zoom texture 2", style="Vaso.TLabel").grid(row=14, column=0, sticky="w", pady=4)
+    texture_zoom_2_combo = ttk.Combobox(
+        general_form_tab,
+        textvariable=texture_zoom_2_var,
+        values=TEXTURE_ZOOM_NAMES,
+        state="readonly",
+        width=13,
+        style="Vaso.TCombobox",
+    )
+    texture_zoom_2_combo.grid(row=14, column=1, sticky="w", pady=4)
 
     ttk.Label(general_form_tab, text="Zoom texture", style="Vaso.TLabel").grid(row=12, column=0, sticky="w", pady=4)
     texture_zoom_combo = ttk.Combobox(
@@ -1227,20 +1271,46 @@ def main() -> None:
         else:
             random_complexity_combo.configure(state="disabled")
 
-    def update_random_texture_state() -> None:
-        if random_texture_enabled_var.get():
+    def update_texture_mode_state() -> None:
+        mode = texture_mode_var.get()
+
+        if mode == "Pas de texture":
+            texture_type_combo.configure(state="disabled")
+            texture_zoom_combo.configure(state="disabled")
+            texture_type_2_combo.configure(state="disabled")
+            texture_zoom_2_combo.configure(state="disabled")
+
+        elif mode == "Texture aléatoire":
+            texture_type_combo.configure(state="disabled")
+            texture_zoom_combo.configure(state="disabled")
+            texture_type_2_combo.configure(state="disabled")
+            texture_zoom_2_combo.configure(state="disabled")
+
+        elif mode == "Texture imposée":
             texture_type_combo.configure(state="readonly")
             texture_zoom_combo.configure(state="readonly")
+            texture_type_2_combo.configure(state="disabled")
+            texture_zoom_2_combo.configure(state="disabled")
+
+        elif mode == "Double texture":
+            texture_type_combo.configure(state="readonly")
+            texture_zoom_combo.configure(state="readonly")
+            texture_type_2_combo.configure(state="readonly")
+            texture_zoom_2_combo.configure(state="readonly")
+
         else:
             texture_type_combo.configure(state="disabled")
-            texture_zoom_combo.configure(state="disabled")           
+            texture_zoom_combo.configure(state="disabled")
+            texture_type_2_combo.configure(state="disabled")
+            texture_zoom_2_combo.configure(state="disabled")
 
     def on_texture_controls_change(event=None) -> None:
         try:
+            update_texture_mode_state()
             params = build_current_params()
             draw_preview(params)
             status_var.set(
-                f"Texture : {texture_type_var.get()} — Zoom : {texture_zoom_var.get()}."
+                f"Mode textures : {texture_mode_var.get()}."
             )
         except Exception:
             pass
@@ -2051,6 +2121,21 @@ def main() -> None:
             sides_vars[i].set("X")
             rotation_vars[i].set("X")
 
+        if texture_mode_var.get() == "Texture aléatoire":
+            random_texture_name = rng.choices(
+                [name for name in TEXTURE_TYPE_NAMES if name != "Pas de texture"],
+                weights=[1] * (len(TEXTURE_TYPE_NAMES) - 1),
+                k=1,
+            )[0]
+            random_zoom_name = rng.choices(
+                TEXTURE_ZOOM_NAMES,
+                weights=[1, 2, 3, 2, 1],
+                k=1,
+            )[0]
+
+            texture_type_var.set(random_texture_name)
+            texture_zoom_var.set(random_zoom_name)
+
         update_profile_fields_state()
 
     def build_current_params() -> VaseParameters:
@@ -2067,8 +2152,37 @@ def main() -> None:
             rotation_vars=rotation_vars,
         )
 
-        params.texture_type = texture_type_var.get()
-        params.texture_zoom = texture_zoom_var.get()
+        params.texture_mode = texture_mode_var.get()
+
+        if params.texture_mode == "Pas de texture":
+            params.texture_type = "Pas de texture"
+            params.texture_zoom = "Moyen"
+            params.texture_type_2 = "Pas de texture"
+            params.texture_zoom_2 = "Moyen"
+
+        elif params.texture_mode == "Texture aléatoire":
+            params.texture_type = texture_type_var.get()
+            params.texture_zoom = texture_zoom_var.get()
+            params.texture_type_2 = "Pas de texture"
+            params.texture_zoom_2 = "Moyen"
+
+        elif params.texture_mode == "Texture imposée":
+            params.texture_type = texture_type_var.get()
+            params.texture_zoom = texture_zoom_var.get()
+            params.texture_type_2 = "Pas de texture"
+            params.texture_zoom_2 = "Moyen"
+
+        elif params.texture_mode == "Double texture":
+            params.texture_type = texture_type_var.get()
+            params.texture_zoom = texture_zoom_var.get()
+            params.texture_type_2 = texture_type_2_var.get()
+            params.texture_zoom_2 = texture_zoom_2_var.get()
+
+        else:
+            params.texture_type = "Pas de texture"
+            params.texture_zoom = "Moyen"
+            params.texture_type_2 = "Pas de texture"
+            params.texture_zoom_2 = "Moyen"
 
         return params
 
@@ -2094,7 +2208,7 @@ def main() -> None:
             params = build_current_params()
             draw_preview(params)
             status_var.set(
-                f"Seed générée — {len(params.profiles)} profils — texture : {texture_type_var.get()} / {texture_zoom_var.get()}."
+                f"Seed générée — {len(params.profiles)} profils — mode textures : {texture_mode_var.get()}."
             )
         except ValueError as exc:
             status_var.set("Seed ou paramètres invalides.")
@@ -2152,8 +2266,11 @@ def main() -> None:
 
     theme_combo.bind("<<ComboboxSelected>>", on_theme_change)
     printer_profile_combo.bind("<<ComboboxSelected>>", on_printer_profile_selected)
+    texture_mode_combo.bind("<<ComboboxSelected>>", on_texture_controls_change)
     texture_type_combo.bind("<<ComboboxSelected>>", on_texture_controls_change)
     texture_zoom_combo.bind("<<ComboboxSelected>>", on_texture_controls_change)
+    texture_type_2_combo.bind("<<ComboboxSelected>>", on_texture_controls_change)
+    texture_zoom_2_combo.bind("<<ComboboxSelected>>", on_texture_controls_change)
     preview_3d_mode_combo.bind("<<ComboboxSelected>>", on_preview_3d_mode_change)
     profile_count_var.trace_add("write", lambda *args: update_profile_fields_state())
 
@@ -2204,7 +2321,7 @@ def main() -> None:
     printer_profile_var.set(active_printer_profile["name"])
     update_profile_fields_state()
     update_random_complexity_state()
-    update_random_texture_state()
+    update_texture_mode_state()
 
     shading_label_var.set(f"{int(round(shading_var.get()))} %")
     status_var.set("Interface prête. Cliquez sur « Aperçu » ou « Aléatoire » pour générer un vase.")

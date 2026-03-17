@@ -7,6 +7,16 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [1.0.1] - 2026-03-17
+
+### Modifié
+
+ - Correction application des textures non cochées
+ - nouvelle approche application des textures
+ - mode aléatoire sans texture / avec texture
+ - mode double texture
+
+
 ## [1.0.0] - 2026-03-15
 
 ### Modifié
