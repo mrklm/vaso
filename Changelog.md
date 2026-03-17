@@ -8,6 +8,13 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [1.0.4] - 2026-03-17
+
+### Ajouté
+
+ -fonction aleatoire double textures 
+
+
 ## [1.0.3] - 2026-03-17
 
 ### Modifié

@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "1.0.3"
+APP_VERSION = "1.0.4"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -202,6 +202,7 @@ TEXTURE_MODE_NAMES = [
     "Texture aléatoire",
     "Texture imposée",
     "Double texture",
+    "Double texture aléatoire",
 ]
 
 PREVIEW_3D_MODE_NAMES = [
@@ -1278,6 +1279,12 @@ def main() -> None:
             texture_type_2_combo.configure(state="readonly")
             texture_zoom_2_combo.configure(state="readonly")
 
+        elif mode == "Double texture aléatoire":
+            texture_type_combo.configure(state="disabled")
+            texture_zoom_combo.configure(state="disabled")
+            texture_type_2_combo.configure(state="disabled")
+            texture_zoom_2_combo.configure(state="disabled")
+
         else:
             texture_type_combo.configure(state="disabled")
             texture_zoom_combo.configure(state="disabled")
@@ -2098,26 +2105,7 @@ def main() -> None:
             sides_vars[i].set(str(sides_values[i]))
             rotation_vars[i].set(str(rotations[i]))
 
-        for i in range(profile_count, 10):
-            z_ratio_vars[i].set("X")
-            diameter_vars[i].set("X")
-            sides_vars[i].set("X")
-            rotation_vars[i].set("X")
-
         if texture_mode_var.get() == "Texture aléatoire":
-            random_texture_name = rng.choices(
-                [name for name in TEXTURE_TYPE_NAMES if name != "Pas de texture"],
-                weights=[1] * (len(TEXTURE_TYPE_NAMES) - 1),
-                k=1,
-            )[0]
-            random_zoom_name = rng.choices(
-                TEXTURE_ZOOM_NAMES,
-                weights=[1, 2, 3, 2, 1],
-                k=1,
-            )[0]
-
-            texture_type_var.set(random_texture_name)
-            texture_zoom_var.set(random_zoom_name)
 
 
     def build_current_params() -> VaseParameters:
@@ -2155,6 +2143,13 @@ def main() -> None:
             params.texture_zoom_2 = "Moyen"
 
         elif params.texture_mode == "Double texture":
+            params.texture_type = texture_type_var.get()
+            params.texture_zoom = texture_zoom_var.get()
+            params.texture_type_2 = texture_type_2_var.get()
+            params.texture_zoom_2 = texture_zoom_2_var.get()
+
+        elif params.texture_mode == "Double texture aléatoire":
+            params.texture_mode = "Double texture"
             params.texture_type = texture_type_var.get()
             params.texture_zoom = texture_zoom_var.get()
             params.texture_type_2 = texture_type_2_var.get()
