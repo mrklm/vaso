@@ -1,30 +1,59 @@
-# --- Python / environnement ---
+# =========================================================
+# Python / environnement
+# =========================================================
 
 .venv/
-**pycache**/
+.venv-build/
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# --- Build / packaging ---
+# =========================================================
+# Build / packaging
+# =========================================================
 
 build/
 dist/
 *.spec
 
-# --- Fichiers système (Windows / macOS) ---
+# Artefacts multi-OS
+releases/
+*.tar.gz
+*.zip
+*.dmg
+*.AppImage
+*.sha256
+
+# Tools téléchargés (ex: appimagetool)
+.tools/
+
+# =========================================================
+# Fichiers système (Windows / macOS)
+# =========================================================
 
 Thumbs.db
 Desktop.ini
 .DS_Store
 
-# --- Fichiers générés par l'app ---
+# =========================================================
+# Fichiers temporaires / éditeurs
+# =========================================================
+
+.~lock.*
+*~
+
+# =========================================================
+# Fichiers générés par l'app
+# =========================================================
 
 settings.json
 *.stl
 *.gcode
 
-# --- Notes personnelles (hors projet) ---
+# =========================================================
+# Notes personnelles (hors projet)
+# =========================================================
 
 *.pdf
 *.odt
