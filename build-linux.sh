@@ -9,6 +9,8 @@ APP_NAME="Vaso"
 MAIN_PY="app.py"
 ICON_PATH="assets/vaso.png"
 KEEP_BUILD_DIRS="0"
+TOOLS_DIR=".tools"
+APPIMAGETOOL_PATH=""
 
 ############################################
 # Options
@@ -43,6 +45,13 @@ need_dir() {
   [[ -d "$1" ]] || { echo "❌ Dossier manquant: $1"; exit 1; }
 }
 
+need_cmd() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "❌ Commande manquante: $1"
+    exit 1
+  }
+}
+
 say() {
   printf "%s\n" "$*"
 }
@@ -57,6 +66,34 @@ detect_arch() {
   esac
 }
 
+ensure_appimagetool() {
+  if [[ "$ARCH" != "x86_64" ]]; then
+    echo "❌ Génération AppImage automatique non configurée pour linux-${ARCH}"
+    echo "   Le téléchargement automatique de appimagetool est prévu ici pour x86_64 uniquement."
+    exit 1
+  fi
+
+  if command -v appimagetool >/dev/null 2>&1; then
+    APPIMAGETOOL_PATH="$(command -v appimagetool)"
+    say "✅ appimagetool détecté : $APPIMAGETOOL_PATH"
+    return
+  fi
+
+  mkdir -p "$TOOLS_DIR"
+  APPIMAGETOOL_PATH="$TOOLS_DIR/appimagetool-x86_64.AppImage"
+
+  if [[ ! -f "$APPIMAGETOOL_PATH" ]]; then
+    say "⬇️  Téléchargement de appimagetool…"
+    need_cmd curl
+    curl -L \
+      "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage" \
+      -o "$APPIMAGETOOL_PATH"
+    chmod +x "$APPIMAGETOOL_PATH"
+  else
+    say "✅ appimagetool déjà présent : $APPIMAGETOOL_PATH"
+  fi
+}
+
 ############################################
 # Préflight
 ############################################
@@ -67,6 +104,10 @@ need_file "$MAIN_PY"
 need_file "requirements.txt"
 need_dir  "assets"
 need_file "$ICON_PATH"
+need_cmd python3
+need_cmd grep
+need_cmd tar
+need_cmd sha256sum
 
 ARCH="$(detect_arch)"
 
@@ -162,25 +203,26 @@ tar -czf "releases/${TAR_NAME}" -C dist "$APP_NAME"
 )
 
 ############################################
-# Génération AppImage (optionnelle)
+# Génération AppImage
 ############################################
 
-if command -v appimagetool >/dev/null 2>&1; then
-  say "📦 appimagetool détecté : création AppImage…"
+ensure_appimagetool
 
-  rm -rf "${APP_NAME}.AppDir"
-  mkdir -p "${APP_NAME}.AppDir/usr/bin"
-  cp -a "dist/$APP_NAME/." "${APP_NAME}.AppDir/usr/bin/"
+say "📦 Création AppImage…"
 
-  cat > "${APP_NAME}.AppDir/AppRun" <<EOF
+rm -rf "${APP_NAME}.AppDir"
+mkdir -p "${APP_NAME}.AppDir/usr/bin"
+cp -a "dist/$APP_NAME/." "${APP_NAME}.AppDir/usr/bin/"
+
+cat > "${APP_NAME}.AppDir/AppRun" <<EOF
 #!/bin/sh
 HERE="\$(dirname "\$(readlink -f "\$0")")"
 exec "\$HERE/usr/bin/$APP_NAME" "\$@"
 EOF
 
-  chmod +x "${APP_NAME}.AppDir/AppRun"
+chmod +x "${APP_NAME}.AppDir/AppRun"
 
-  cat > "${APP_NAME}.AppDir/${APP_NAME}.desktop" <<EOF
+cat > "${APP_NAME}.AppDir/${APP_NAME}.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=$APP_NAME
@@ -190,25 +232,23 @@ Categories=Graphics;
 Terminal=false
 EOF
 
-  cp -a "$ICON_PATH" "${APP_NAME}.AppDir/${APP_NAME}.png"
+cp -a "$ICON_PATH" "${APP_NAME}.AppDir/${APP_NAME}.png"
 
-  APPIMAGE_NAME="${APP_NAME}-v${VERSION}-linux-${ARCH}.AppImage"
+APPIMAGE_NAME="${APP_NAME}-v${VERSION}-linux-${ARCH}.AppImage"
 
-  appimagetool "${APP_NAME}.AppDir" "releases/${APPIMAGE_NAME}"
-  chmod +x "releases/${APPIMAGE_NAME}"
+ARCH="$ARCH" "$APPIMAGETOOL_PATH" "${APP_NAME}.AppDir" "releases/${APPIMAGE_NAME}"
+chmod +x "releases/${APPIMAGE_NAME}"
 
-  (
-    cd releases
-    sha256sum "${APPIMAGE_NAME}" > "${APPIMAGE_NAME}.sha256"
-  )
-else
-  say "⚠️  appimagetool non trouvé : AppImage ignorée"
-  say "   Le tar.gz a bien été généré."
-fi
+(
+  cd releases
+  sha256sum "${APPIMAGE_NAME}" > "${APPIMAGE_NAME}.sha256"
+)
 
 ############################################
 # Clean final
 ############################################
+
+deactivate || true
 
 if [[ "$KEEP_BUILD_DIRS" == "1" ]]; then
   say "🧾 --keep activé : .venv-build, build, dist, spec et AppDir conservés"
