@@ -17,19 +17,34 @@ VERSION=""
 KEEP="0"
 MAKE_ZIP="0"
 ARCH=""   # x86_64 | arm64 | auto
+PY_FILE="app.py"
+ICON_PATH="assets/vaso.icns"
+VENV_BUILD_DIR=".venv-build"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -v|--version) VERSION="${2:-}"; shift 2 ;;
-    --keep) KEEP="1"; shift ;;
-    --zip) MAKE_ZIP="1"; shift ;;
-    --arch) ARCH="${2:-}"; shift 2 ;;
+    -v|--version)
+      VERSION="${2:-}"
+      shift 2
+      ;;
+    --keep)
+      KEEP="1"
+      shift
+      ;;
+    --zip)
+      MAKE_ZIP="1"
+      shift
+      ;;
+    --arch)
+      ARCH="${2:-}"
+      shift 2
+      ;;
     -h|--help)
-      sed -n '1,220p' "$0"
+      sed -n '1,260p' "$0"
       exit 0
       ;;
     *)
-      echo "Unknown arg: $1"
+      echo "❌ Argument inconnu : $1"
       exit 1
       ;;
   esac
@@ -38,9 +53,25 @@ done
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
+need_file() {
+  [[ -f "$1" ]] || { echo "❌ Fichier manquant : $1"; exit 1; }
+}
+
+need_dir() {
+  [[ -d "$1" ]] || { echo "❌ Dossier manquant : $1"; exit 1; }
+}
+
+need_cmd() {
+  command -v "$1" >/dev/null 2>&1 || { echo "❌ Commande manquante : $1"; exit 1; }
+}
+
+say() {
+  printf "%s\n" "$*"
+}
+
 # --- Detect arch if not provided ---
 if [[ -z "$ARCH" ]]; then
-  MACHINE="$(uname -m)"
+  MACHINE="$(uname -m || true)"
   if [[ "$MACHINE" == "arm64" ]]; then
     ARCH="arm64"
   else
@@ -49,45 +80,62 @@ if [[ -z "$ARCH" ]]; then
 fi
 
 if [[ "$ARCH" != "x86_64" && "$ARCH" != "arm64" ]]; then
-  echo "❌ Invalid --arch. Use x86_64 or arm64."
+  echo "❌ Valeur invalide pour --arch. Utilisez x86_64 ou arm64."
   exit 1
 fi
 
-PY_FILE="app.py"
-ICON_PATH="assets/vaso.icns"
-
 # --- Checks ---
-[[ -d ".venv" ]] || { echo "❌ Missing .venv/ (create venv first)"; exit 1; }
-[[ -f "$PY_FILE" ]] || { echo "❌ Missing ${PY_FILE} (run this script at repo root)"; exit 1; }
-[[ -f "$ICON_PATH" ]] || { echo "❌ Missing ${ICON_PATH}"; exit 1; }
-[[ -d "assets" ]] || { echo "❌ Missing assets/"; exit 1; }
-[[ -f "requirements.txt" ]] || { echo "❌ Missing requirements.txt"; exit 1; }
+need_file "$PY_FILE"
+need_file "$ICON_PATH"
+need_dir "assets"
+need_file "requirements.txt"
+need_cmd python3
+need_cmd grep
+need_cmd sed
+need_cmd hdiutil
+need_cmd ditto
+need_cmd shasum
+need_cmd xattr
 
 # --- Detect APP_NAME from code ---
-APP_NAME_FROM_CODE="$(grep -E '^APP_NAME[[:space:]]*=[[:space:]]*"' "${PY_FILE}" | sed -E 's/^[^"]*"([^"]+)".*$/\1/' || true)"
+APP_NAME_FROM_CODE="$(grep -E '^APP_NAME[[:space:]]*=[[:space:]]*"' "$PY_FILE" | sed -E 's/^[^"]*"([^"]+)".*$/\1/' || true)"
 if [[ -n "$APP_NAME_FROM_CODE" ]]; then
   APP_NAME="$APP_NAME_FROM_CODE"
 fi
 
 # --- Version (default from code if not provided via -v/--version) ---
-if [[ -z "${VERSION}" ]]; then
-  VERSION="$(grep -E '^APP_VERSION[[:space:]]*=[[:space:]]*"' "${PY_FILE}" | sed -E 's/^[^"]*"([^"]+)".*$/\1/' || true)"
-  if [[ -z "${VERSION}" ]]; then
-    echo "❌ Unable to extract APP_VERSION from ${PY_FILE}"
+if [[ -z "$VERSION" ]]; then
+  VERSION="$(grep -E '^APP_VERSION[[:space:]]*=[[:space:]]*"' "$PY_FILE" | sed -E 's/^[^"]*"([^"]+)".*$/\1/' || true)"
+  if [[ -z "$VERSION" ]]; then
+    echo "❌ Impossible d'extraire APP_VERSION depuis ${PY_FILE}"
     exit 1
   fi
-  echo "ℹ️ Version extracted from code: ${VERSION}"
+  say "ℹ️ Version extraite du code : ${VERSION}"
 fi
 
-echo "== ${APP_NAME} macOS build =="
-echo " - Version: ${VERSION}"
-echo " - Arch:    ${ARCH}"
-echo " - Entry:   ${PY_FILE}"
-echo " - Icon:    ${ICON_PATH}"
+say "== ${APP_NAME} macOS build =="
+say " - Version : ${VERSION}"
+say " - Arch    : ${ARCH}"
+say " - Entry   : ${PY_FILE}"
+say " - Icon    : ${ICON_PATH}"
 
-# --- Activate venv ---
+# --- Clean (start) ---
+if [[ "$KEEP" != "1" ]]; then
+  say "== Clean (start) =="
+  rm -rf build dist "${APP_NAME}.spec" dist_dmg_staging releases "$VENV_BUILD_DIR"
+  rm -rf "$HOME/Library/Application Support/pyinstaller" 2>/dev/null || true
+else
+  say "ℹ️ Keep activé : nettoyage initial ignoré"
+fi
+
+mkdir -p releases
+
+# --- Create build venv ---
+say "🐍 Préparation du venv de build…"
+python3 -m venv "$VENV_BUILD_DIR"
+
 # shellcheck disable=SC1091
-source ".venv/bin/activate"
+source "$VENV_BUILD_DIR/bin/activate"
 
 python -V
 python -m pip install -U pip wheel setuptools >/dev/null
@@ -103,22 +151,8 @@ import trimesh
 print("Imports OK")
 PY
 
-# --- Clean (start) ---
-VENV_BUILD_DIR=".venv-build"
-
-if [[ "$KEEP" != "1" ]]; then
-  echo "== Clean (start) =="
-  rm -rf build dist "${APP_NAME}.spec" dist_dmg_staging
-  rm -rf releases
-  rm -rf "$VENV_BUILD_DIR" 2>/dev/null || true
-  rm -rf "$HOME/Library/Application Support/pyinstaller" 2>/dev/null || true
-else
-  echo "ℹ️ Keep enabled: skip clean at start"
-fi
-
-mkdir -p releases
-
 # --- Build .app ---
+say "🏗️ Build PyInstaller…"
 pyinstaller \
   --name "${APP_NAME}" \
   --windowed \
@@ -134,7 +168,7 @@ pyinstaller \
 
 APP_PATH="dist/${APP_NAME}.app"
 if [[ ! -d "$APP_PATH" ]]; then
-  echo "❌ Build failed: ${APP_PATH} not found"
+  echo "❌ Build failed : ${APP_PATH} introuvable"
   exit 1
 fi
 
@@ -145,17 +179,19 @@ ZIP_PATH="releases/${BASE_NAME}.zip"
 
 # --- Optional ZIP of .app ---
 if [[ "$MAKE_ZIP" == "1" ]]; then
+  say "📦 Création ZIP…"
   rm -f "$ZIP_PATH"
   ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$ZIP_PATH"
   (
     cd releases
     shasum -a 256 "$(basename "$ZIP_PATH")" > "$(basename "$ZIP_PATH").sha256"
   )
-  echo "✅ ZIP: ${ZIP_PATH}"
-  echo "✅ SHA: ${ZIP_PATH}.sha256"
+  say "✅ ZIP : ${ZIP_PATH}"
+  say "✅ SHA : ${ZIP_PATH}.sha256"
 fi
 
 # --- Prepare DMG staging ---
+say "📦 Préparation du staging DMG…"
 STAGING_DIR="dist_dmg_staging"
 rm -rf "$STAGING_DIR"
 mkdir -p "$STAGING_DIR"
@@ -166,6 +202,7 @@ ln -s /Applications "$STAGING_DIR/Applications"
 find "$STAGING_DIR/${APP_NAME}.app" -exec xattr -d com.apple.quarantine {} \; 2>/dev/null || true
 
 # --- Create DMG ---
+say "📦 Création DMG…"
 rm -f "$DMG_PATH"
 hdiutil create \
   -volname "${APP_NAME}" \
@@ -181,31 +218,31 @@ rm -f "${DMG_PATH}.sha256"
   shasum -a 256 "$(basename "$DMG_PATH")" > "$(basename "$DMG_PATH").sha256"
 )
 
-echo
-echo "✅ Done:"
-echo " - App: dist/${APP_NAME}.app"
-echo " - DMG: ${DMG_PATH}"
-echo " - SHA: ${DMG_PATH}.sha256"
+say ""
+say "✅ Build terminé :"
+say " - App : dist/${APP_NAME}.app"
+say " - DMG : ${DMG_PATH}"
+say " - SHA : ${DMG_PATH}.sha256"
 if [[ "$MAKE_ZIP" == "1" ]]; then
-  echo " - ZIP: ${ZIP_PATH}"
-  echo " - SHA: ${ZIP_PATH}.sha256"
+  say " - ZIP : ${ZIP_PATH}"
+  say " - SHA : ${ZIP_PATH}.sha256"
 fi
 
+deactivate || true
+
 if [[ "$KEEP" != "1" ]]; then
-  echo
-  echo "== Clean (end) =="
-  echo " - Removing staging/, build/, dist/, *.spec, .venv-build/, __pycache__/ and PyInstaller cache"
+  say ""
+  say "== Clean (end) =="
+  say " - Suppression de staging/, build/, dist/, *.spec, .venv-build/, __pycache__/ et cache PyInstaller"
 
   rm -rf "$STAGING_DIR" 2>/dev/null || true
   rm -rf build dist "${APP_NAME}.spec" 2>/dev/null || true
   rm -rf "$VENV_BUILD_DIR" 2>/dev/null || true
 
-  # Python caches in repo
   find "$ROOT_DIR" -type d -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null || true
   find "$ROOT_DIR" -type f \( -name "*.pyc" -o -name "*.pyo" \) -delete 2>/dev/null || true
 
-  # PyInstaller cache (user profile)
   rm -rf "$HOME/Library/Application Support/pyinstaller" 2>/dev/null || true
 else
-  echo "ℹ️ Keep enabled: build artifacts preserved (staging/build/dist/spec/caches)"
+  say "ℹ️ Keep activé : build/dist/spec/staging/venv-build conservés"
 fi
