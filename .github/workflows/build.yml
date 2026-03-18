@@ -28,6 +28,8 @@ jobs:
     steps:
       - name: Récupérer le dépôt
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Installer Python 3.12
         uses: actions/setup-python@v6
