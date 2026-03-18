@@ -7,6 +7,13 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [1.0.6] - 2026-03-17
+
+### Modifié
+
+ - Édition du champs nombre de profil sans auto correction agressive
+
+
 ## [1.0.5] - 2026-03-17
 
 ### Ajouté

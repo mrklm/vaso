@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "1.0.5"
+APP_VERSION = "1.0.6"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -1221,10 +1221,7 @@ def main() -> None:
 
         clamped_count = max(2, min(10, active_count))
 
-        if str(clamped_count) != profile_count_var.get():
-            profile_count_var.set(str(clamped_count))
-            return
-
+        # On ne corrige PAS pendant la saisie (sinon ça écrase ce que l'utilisateur tape)
         active_count = clamped_count
 
         active_entries = (
@@ -1244,6 +1241,28 @@ def main() -> None:
 
         z_ratio_vars[0].set("0")
         z_ratio_vars[active_count - 1].set("100")
+
+
+    def normalize_active_profile_heights(active_count: int) -> None:
+        if active_count < 2:
+            return
+
+        if active_count == 2:
+            z_ratio_vars[0].set("0")
+            z_ratio_vars[1].set("100")
+            return
+
+        step = 100.0 / float(active_count - 1)
+
+        for i in range(active_count):
+            value = int(round(i * step))
+
+            if i == 0:
+                value = 0
+            elif i == active_count - 1:
+                value = 100
+
+            z_ratio_vars[i].set(str(value))
 
 
     def update_random_complexity_state() -> None:
@@ -1321,7 +1340,30 @@ def main() -> None:
         except Exception:
             pass
 
-    profile_count_var.trace_add("write", update_profile_fields_state)
+    last_profile_count = {"value": 2}
+
+    def on_profile_count_change(*_args) -> None:
+        try:
+            raw_value = profile_count_var.get().strip()
+            if raw_value == "":
+                update_profile_fields_state()
+                return
+
+            new_count = int(raw_value)
+        except Exception:
+            update_profile_fields_state()
+            return
+
+        new_count = max(2, min(10, new_count))
+        old_count = last_profile_count["value"]
+
+        update_profile_fields_state()
+
+        if new_count != old_count:
+            normalize_active_profile_heights(new_count)
+            last_profile_count["value"] = new_count
+
+    profile_count_var.trace_add("write", on_profile_count_change)
 
     preview_3d_controls = ttk.Frame(preview_3d_frame, style="Vaso.TFrame")
     preview_3d_controls.pack(fill="x", pady=(0, 8))
