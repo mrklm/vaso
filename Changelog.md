@@ -7,6 +7,14 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+
+## [1.0.8] - 2026-03-17
+
+### Ajouté
+
+ - Cases à cocher davant chaque profil pour éditer facilement les vases
+
+
 ## [1.0.7] - 2026-03-17
 
 ### Modifié

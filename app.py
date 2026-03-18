@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "1.0.7"
+APP_VERSION = "1.0.8"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -406,6 +406,7 @@ def render_markdown_into_text(widget: scrolledtext.ScrolledText, markdown_text: 
 
 def _build_profiles_from_explicit_ui(
     profile_count: int,
+    profile_enabled_vars: list[tk.BooleanVar],
     z_ratio_vars: list[tk.StringVar],
     diameter_vars: list[tk.StringVar],
     sides_vars: list[tk.StringVar],
@@ -414,28 +415,37 @@ def _build_profiles_from_explicit_ui(
     if profile_count < 2 or profile_count > 10:
         raise ValueError("Le nombre de profils doit être compris entre 2 et 10.")
 
-    profiles: list[Profile] = []
+    active_indices = [0]
 
+    for i in range(1, profile_count - 1):
+        if profile_enabled_vars[i].get():
+            active_indices.append(i)
+
+    active_indices.append(profile_count - 1)
+
+    profiles: list[Profile] = []
     previous_z_ratio = -1.0
 
-    for i in range(profile_count):
-        z_ratio = float(z_ratio_vars[i].get()) / 100.0
-        diameter = float(diameter_vars[i].get())
-        sides = int(sides_vars[i].get())
-        rotation_deg = float(rotation_vars[i].get())
+    for ui_index in active_indices:
+        z_ratio = float(z_ratio_vars[ui_index].get()) / 100.0
+        diameter = float(diameter_vars[ui_index].get())
+        sides = int(sides_vars[ui_index].get())
+        rotation_deg = float(rotation_vars[ui_index].get())
 
         if not (0.0 <= z_ratio <= 1.0):
-            raise ValueError(f"Le profil {i + 1} doit avoir une hauteur comprise entre 0 et 100 %.")
+            raise ValueError(
+                f"Le profil {ui_index + 1} doit avoir une hauteur comprise entre 0 et 100 %."
+            )
 
         if diameter <= 0:
-            raise ValueError(f"Le diamètre du profil {i + 1} doit être > 0.")
+            raise ValueError(f"Le diamètre du profil {ui_index + 1} doit être > 0.")
 
         if sides < 3:
-            raise ValueError(f"Le nombre de côtés du profil {i + 1} doit être >= 3.")
+            raise ValueError(f"Le nombre de côtés du profil {ui_index + 1} doit être >= 3.")
 
         if z_ratio <= previous_z_ratio:
             raise ValueError(
-                f"Les hauteurs de profils doivent être strictement croissantes (profil {i + 1})."
+                f"Les hauteurs de profils doivent être strictement croissantes (profil {ui_index + 1})."
             )
 
         previous_z_ratio = z_ratio
@@ -450,6 +460,9 @@ def _build_profiles_from_explicit_ui(
                 offset_y=0.0,
             )
         )
+
+    if len(profiles) < 2:
+        raise ValueError("Il faut au minimum 2 profils actifs.")
 
     if abs(profiles[0].z_ratio - 0.0) > 1e-9:
         raise ValueError("Le profil 1 = 0 %.")
@@ -467,6 +480,7 @@ def build_params_from_ui(
     radial_var: tk.StringVar,
     vertical_var: tk.StringVar,
     profile_count_var: tk.StringVar,
+    profile_enabled_vars: list[tk.BooleanVar],
     z_ratio_vars: list[tk.StringVar],
     diameter_vars: list[tk.StringVar],
     sides_vars: list[tk.StringVar],
@@ -488,6 +502,7 @@ def build_params_from_ui(
 
     params.profiles = _build_profiles_from_explicit_ui(
         profile_count=profile_count,
+        profile_enabled_vars=profile_enabled_vars,
         z_ratio_vars=z_ratio_vars,
         diameter_vars=diameter_vars,
         sides_vars=sides_vars,
@@ -884,6 +899,19 @@ def main() -> None:
     vertical_var = tk.StringVar(value="120")
     profile_count_var = tk.StringVar(value="2")
 
+    profile_enabled_vars = [
+        tk.BooleanVar(value=True),
+        tk.BooleanVar(value=True),
+        tk.BooleanVar(value=False),
+        tk.BooleanVar(value=False),
+        tk.BooleanVar(value=False),
+        tk.BooleanVar(value=False),
+        tk.BooleanVar(value=False),
+        tk.BooleanVar(value=False),
+        tk.BooleanVar(value=False),
+        tk.BooleanVar(value=False),
+    ]
+
     z_ratio_vars = [
         tk.StringVar(value="0"),
         tk.StringVar(value="20"),
@@ -1134,12 +1162,13 @@ def main() -> None:
     profiles_table_frame = ttk.Frame(shape_form_tab, style="Vaso.TFrame")
     profiles_table_frame.grid(row=0, column=0, sticky="nw")
 
-    ttk.Label(profiles_table_frame, text="Profil", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", padx=(0, 8), pady=(0, 6))
-    ttk.Label(profiles_table_frame, text="Hauteur (%)", style="Vaso.TLabel").grid(row=0, column=1, sticky="w", padx=4, pady=(0, 6))
-    ttk.Label(profiles_table_frame, text="Diamètre (mm)", style="Vaso.TLabel").grid(row=0, column=2, sticky="w", padx=4, pady=(0, 6))
-    ttk.Label(profiles_table_frame, text="Côtés", style="Vaso.TLabel").grid(row=0, column=3, sticky="w", padx=4, pady=(0, 6))
-    ttk.Label(profiles_table_frame, text="Rotation (°)", style="Vaso.TLabel").grid(row=0, column=4, sticky="w", padx=4, pady=(0, 6))
+    ttk.Label(profiles_table_frame, text="Profil", style="Vaso.TLabel").grid(row=0, column=1, sticky="w", padx=(0, 8), pady=(0, 6))
+    ttk.Label(profiles_table_frame, text="Hauteur (%)", style="Vaso.TLabel").grid(row=0, column=2, sticky="w", padx=4, pady=(0, 6))
+    ttk.Label(profiles_table_frame, text="Diamètre (mm)", style="Vaso.TLabel").grid(row=0, column=3, sticky="w", padx=4, pady=(0, 6))
+    ttk.Label(profiles_table_frame, text="Côtés", style="Vaso.TLabel").grid(row=0, column=4, sticky="w", padx=4, pady=(0, 6))
+    ttk.Label(profiles_table_frame, text="Rotation (°)", style="Vaso.TLabel").grid(row=0, column=5, sticky="w", padx=4, pady=(0, 6))
 
+    profile_enable_checks = []
     profile_row_labels = []
     profile_z_entries = []
     profile_diameter_entries = []
@@ -1149,12 +1178,21 @@ def main() -> None:
     for i in range(10):
         row_index = i + 1
 
+        enable_check = ttk.Checkbutton(
+            profiles_table_frame,
+            variable=profile_enabled_vars[i],
+            style="Vaso.TCheckbutton",
+            command=lambda idx=i: on_profile_enabled_change(idx),
+        )
+        enable_check.grid(row=row_index, column=0, sticky="w", padx=(0, 4), pady=3)
+        profile_enable_checks.append(enable_check)
+
         row_label = ttk.Label(
             profiles_table_frame,
             text=f"P{i + 1}",
             style="Vaso.TLabel",
         )
-        row_label.grid(row=row_index, column=0, sticky="w", padx=(0, 8), pady=3)
+        row_label.grid(row=row_index, column=1, sticky="w", padx=(0, 8), pady=3)
         profile_row_labels.append(row_label)
 
         z_entry = ttk.Entry(
@@ -1163,7 +1201,7 @@ def main() -> None:
             width=4,
             style="Vaso.TEntry",
         )
-        z_entry.grid(row=row_index, column=1, sticky="w", padx=4, pady=3)
+        z_entry.grid(row=row_index, column=2, sticky="w", padx=4, pady=3)
         profile_z_entries.append(z_entry)
 
         diameter_entry = ttk.Entry(
@@ -1172,7 +1210,7 @@ def main() -> None:
             width=5,
             style="Vaso.TEntry",
         )
-        diameter_entry.grid(row=row_index, column=2, sticky="w", padx=4, pady=3)
+        diameter_entry.grid(row=row_index, column=3, sticky="w", padx=4, pady=3)
         profile_diameter_entries.append(diameter_entry)
 
         sides_entry = ttk.Entry(
@@ -1181,7 +1219,7 @@ def main() -> None:
             width=4,
             style="Vaso.TEntry",
         )
-        sides_entry.grid(row=row_index, column=3, sticky="w", padx=4, pady=3)
+        sides_entry.grid(row=row_index, column=4, sticky="w", padx=4, pady=3)
         profile_sides_entries.append(sides_entry)
 
         rotation_entry = ttk.Entry(
@@ -1190,7 +1228,7 @@ def main() -> None:
             width=5,
             style="Vaso.TEntry",
         )
-        rotation_entry.grid(row=row_index, column=4, sticky="w", padx=4, pady=3)
+        rotation_entry.grid(row=row_index, column=5, sticky="w", padx=4, pady=3)
         profile_rotation_entries.append(rotation_entry)
 
     ttk.Label(
@@ -1207,10 +1245,12 @@ def main() -> None:
         justify="left",
     ).grid(row=2, column=0, sticky="w", pady=(0, 0))
 
+    profiles_table_frame.columnconfigure(0, weight=0)
     profiles_table_frame.columnconfigure(1, weight=0)
     profiles_table_frame.columnconfigure(2, weight=0)
     profiles_table_frame.columnconfigure(3, weight=0)
     profiles_table_frame.columnconfigure(4, weight=0)
+    profiles_table_frame.columnconfigure(5, weight=0)
 
 
     def update_profile_fields_state(*_args) -> None:
@@ -1220,8 +1260,6 @@ def main() -> None:
             active_count = 2
 
         clamped_count = max(2, min(10, active_count))
-
-        # On ne corrige PAS pendant la saisie (sinon ça écrase ce que l'utilisateur tape)
         active_count = clamped_count
 
         active_entries = (
@@ -1242,17 +1280,24 @@ def main() -> None:
             profile_row_labels[i].configure(text=f"P{i + 1}")
 
             if i < active_count:
-                state = "normal"
+                if i == 0 or i == active_count - 1:
+                    profile_enabled_vars[i].set(True)
+                    profile_enable_checks[i].configure(state="disabled")
+                    entry_state = "normal"
+                else:
+                    profile_enable_checks[i].configure(state="normal")
+                    entry_state = "normal" if profile_enabled_vars[i].get() else "disabled"
             else:
-                state = "normal"
+                profile_enabled_vars[i].set(False)
+                profile_enable_checks[i].configure(state="disabled")
 
                 for vars_list in active_vars:
                     vars_list[i].set("X")
 
-                state = "disabled"
+                entry_state = "disabled"
 
             for entry_list in active_entries:
-                entry_list[i].configure(state=state)
+                entry_list[i].configure(state=entry_state)
 
         z_ratio_vars[0].set("0")
         z_ratio_vars[active_count - 1].set("100")
@@ -1344,16 +1389,14 @@ def main() -> None:
         except Exception:
             pass
 
-    def on_shading_change(value: str) -> None:
+    def on_profile_enabled_change(_index: int) -> None:
         try:
-            shading_percent = float(value)
-            shading_label_var.set(f"{int(round(shading_percent))} %")
-
+            update_profile_fields_state()
             params = build_current_params()
             draw_preview(params)
-            status_var.set("Shading 3D mis à jour.")
+            status_var.set("Profils actifs mis à jour.")
         except Exception:
-            pass
+            update_profile_fields_state()
 
     last_profile_count = {"value": 2}
 
@@ -2157,10 +2200,17 @@ def main() -> None:
             rotations.append(int(rotation))
 
         for i in range(profile_count):
+            profile_enabled_vars[i].set(True)
             z_ratio_vars[i].set(str(active_z_values[i]))
             diameter_vars[i].set(str(diameters[i]))
             sides_vars[i].set(str(sides_values[i]))
             rotation_vars[i].set(str(rotations[i]))
+            
+        profile_enabled_vars[0].set(True)
+        profile_enabled_vars[profile_count - 1].set(True)    
+            
+        for i in range(profile_count, 10):
+            profile_enabled_vars[i].set(False)
 
         if texture_mode_var.get() == "Texture aléatoire":
             random_texture_name = rng.choices(
@@ -2210,6 +2260,7 @@ def main() -> None:
             radial_var=radial_var,
             vertical_var=vertical_var,
             profile_count_var=profile_count_var,
+            profile_enabled_vars=profile_enabled_vars,
             z_ratio_vars=z_ratio_vars,
             diameter_vars=diameter_vars,
             sides_vars=sides_vars,
