@@ -7,6 +7,11 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [1.0.9] - 2026-03-17
+
+### Modifié
+
+ - Erreur de définition de "on_shading_change"
 
 ## [1.0.8] - 2026-03-17
 

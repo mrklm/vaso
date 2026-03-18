@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "1.0.8"
+APP_VERSION = "1.0.9"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -1388,6 +1388,17 @@ def main() -> None:
             status_var.set(f"Mode 3D : {preview_3d_mode_var.get()}.")
         except Exception:
             pass
+        
+    def on_shading_change(value: str) -> None:
+        try:
+            shading_percent = float(value)
+            shading_label_var.set(f"{int(round(shading_percent))} %")
+
+            params = build_current_params()
+            draw_preview(params)
+            status_var.set("Shading 3D mis à jour.")
+        except Exception:
+            pass    
 
     def on_profile_enabled_change(_index: int) -> None:
         try:
