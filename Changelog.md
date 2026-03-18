@@ -7,6 +7,13 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [1.0.7] - 2026-03-17
+
+### Modifié
+
+ - Afficher à nouveau des X dans les champs de profils non générés
+
+
 ## [1.0.6] - 2026-03-17
 
 ### Modifié

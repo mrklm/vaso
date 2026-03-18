@@ -21,7 +21,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "1.0.6"
+APP_VERSION = "1.0.7"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -1231,10 +1231,25 @@ def main() -> None:
             profile_rotation_entries,
         )
 
+        active_vars = (
+            z_ratio_vars,
+            diameter_vars,
+            sides_vars,
+            rotation_vars,
+        )
+
         for i in range(10):
             profile_row_labels[i].configure(text=f"P{i + 1}")
 
-            state = "normal" if i < active_count else "disabled"
+            if i < active_count:
+                state = "normal"
+            else:
+                state = "normal"
+
+                for vars_list in active_vars:
+                    vars_list[i].set("X")
+
+                state = "disabled"
 
             for entry_list in active_entries:
                 entry_list[i].configure(state=state)
