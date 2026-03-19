@@ -22,9 +22,9 @@ jobs:
           - os: ubuntu-latest
             label: Linux
             artifact_name: vaso-linux
-          - os: macos-latest
-            label: macOS
-            artifact_name: vaso-macos
+          - os: macos-15-intel
+            label: macOS x86_64
+            artifact_name: vaso-macos-x86_64
           - os: windows-latest
             label: Windows
             artifact_name: vaso-windows
@@ -43,6 +43,7 @@ jobs:
           git rev-parse HEAD
           git log -1 --oneline --decorate
           git status --short --branch
+          uname -m || true
 
       - name: Installer Python 3.12
         uses: actions/setup-python@v6
