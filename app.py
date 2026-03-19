@@ -23,7 +23,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "1.0.10"
+APP_VERSION = "1.0.11"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -1129,25 +1129,39 @@ def main() -> None:
     )
     random_style_combo.grid(row=7, column=1, sticky="w", pady=4)
 
+    ttk.Label(general_form_tab, text="Complexité", style="Vaso.TLabel").grid(row=8, column=0, sticky="w", pady=4)
+
+    complexity_row_frame = ttk.Frame(general_form_tab, style="Vaso.TFrame")
+    complexity_row_frame.grid(row=8, column=1, sticky="w", pady=4)
+
     random_complexity_check = ttk.Checkbutton(
-        general_form_tab,
-        text="Forcer la complexité",
+        complexity_row_frame,
         variable=random_complexity_enabled_var,
         style="Vaso.TCheckbutton",
         command=lambda: update_random_complexity_state(),
     )
-    random_complexity_check.grid(row=8, column=0, columnspan=2, sticky="w", pady=4)
+    random_complexity_check.grid(row=0, column=0, sticky="w", padx=(0, 6))
 
-    ttk.Label(general_form_tab, text="Complexité", style="Vaso.TLabel").grid(row=9, column=0, sticky="w", pady=4)
     random_complexity_combo = ttk.Combobox(
-        general_form_tab,
+        complexity_row_frame,
         textvariable=random_complexity_var,
         values=RANDOM_COMPLEXITY_NAMES,
+        state="readonly",
+        width=15,
+        style="Vaso.TCombobox",
+    )
+    random_complexity_combo.grid(row=0, column=1, sticky="w")
+
+    ttk.Label(general_form_tab, text="Textures", style="Vaso.TLabel").grid(row=9, column=0, sticky="w", pady=4)
+    texture_mode_combo = ttk.Combobox(
+        general_form_tab,
+        textvariable=texture_mode_var,
+        values=TEXTURE_MODE_NAMES,
         state="readonly",
         width=18,
         style="Vaso.TCombobox",
     )
-    random_complexity_combo.grid(row=9, column=1, sticky="w", pady=4)
+    texture_mode_combo.grid(row=9, column=1, sticky="w", pady=4)
 
     ttk.Label(general_form_tab, text="Textures", style="Vaso.TLabel").grid(row=10, column=0, sticky="w", pady=4)
     texture_mode_combo = ttk.Combobox(
@@ -1160,49 +1174,57 @@ def main() -> None:
     )
     texture_mode_combo.grid(row=10, column=1, sticky="w", pady=4)
 
-    ttk.Label(general_form_tab, text="Texture 1", style="Vaso.TLabel").grid(row=11, column=0, sticky="w", pady=4)
+    texture_headers_frame = ttk.Frame(general_form_tab, style="Vaso.TFrame")
+    texture_headers_frame.grid(row=10, column=1, sticky="w", pady=(4, 0))
+
+    ttk.Label(texture_headers_frame, text="Texture", style="Vaso.TLabel").grid(row=0, column=0, sticky="w")
+    ttk.Label(texture_headers_frame, text="Zoom texture", style="Vaso.TLabel").grid(row=0, column=1, sticky="w", padx=(8, 0))
+
+    texture_row_1_frame = ttk.Frame(general_form_tab, style="Vaso.TFrame")
+    texture_row_1_frame.grid(row=11, column=1, sticky="w", pady=4)
+
     texture_type_combo = ttk.Combobox(
-        general_form_tab,
+        texture_row_1_frame,
         textvariable=texture_type_var,
         values=TEXTURE_TYPE_NAMES,
         state="readonly",
         width=13,
         style="Vaso.TCombobox",
     )
-    texture_type_combo.grid(row=11, column=1, sticky="w", pady=4)
+    texture_type_combo.grid(row=0, column=0, sticky="w")
 
-    ttk.Label(general_form_tab, text="Zoom texture 1", style="Vaso.TLabel").grid(row=12, column=0, sticky="w", pady=4)
     texture_zoom_combo = ttk.Combobox(
-        general_form_tab,
+        texture_row_1_frame,
         textvariable=texture_zoom_var,
         values=TEXTURE_ZOOM_NAMES,
         state="readonly",
-        width=13,
+        width=11,
         style="Vaso.TCombobox",
     )
-    texture_zoom_combo.grid(row=12, column=1, sticky="w", pady=4)
+    texture_zoom_combo.grid(row=0, column=1, sticky="w", padx=(8, 0))
 
-    ttk.Label(general_form_tab, text="Texture 2", style="Vaso.TLabel").grid(row=13, column=0, sticky="w", pady=4)
+    texture_row_2_frame = ttk.Frame(general_form_tab, style="Vaso.TFrame")
+    texture_row_2_frame.grid(row=12, column=1, sticky="w", pady=4)
+
     texture_type_2_combo = ttk.Combobox(
-        general_form_tab,
+        texture_row_2_frame,
         textvariable=texture_type_2_var,
         values=TEXTURE_TYPE_NAMES,
         state="readonly",
         width=13,
         style="Vaso.TCombobox",
     )
-    texture_type_2_combo.grid(row=13, column=1, sticky="w", pady=4)
+    texture_type_2_combo.grid(row=0, column=0, sticky="w")
 
-    ttk.Label(general_form_tab, text="Zoom texture 2", style="Vaso.TLabel").grid(row=14, column=0, sticky="w", pady=4)
     texture_zoom_2_combo = ttk.Combobox(
-        general_form_tab,
+        texture_row_2_frame,
         textvariable=texture_zoom_2_var,
         values=TEXTURE_ZOOM_NAMES,
         state="readonly",
-        width=13,
+        width=11,
         style="Vaso.TCombobox",
     )
-    texture_zoom_2_combo.grid(row=14, column=1, sticky="w", pady=4)
+    texture_zoom_2_combo.grid(row=0, column=1, sticky="w", padx=(8, 0))
 
     general_form_tab.columnconfigure(1, weight=0)
 
