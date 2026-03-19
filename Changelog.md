@@ -7,6 +7,13 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [1.0.12] - 2026-03-19
+
+### Modifié
+
+ - Réorganisation fenêtre paramètres généraux
+
+
 ## [1.0.11] - 2026-03-19
 
 ### Modifié
