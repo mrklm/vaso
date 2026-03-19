@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# build-macos.sh — Vaso macOS (Intel / Apple Silicon)
+# build-macos.sh — Vaso macOS x86_64 uniquement
 # Build: PyInstaller -> .app -> (optional) ZIP -> DMG -> sha256
 #
 # Usage:
@@ -9,14 +9,12 @@ set -euo pipefail
 #   ./build-macos.sh -v 1.0.0
 #   ./build-macos.sh -v 1.0.0 --zip
 #   ./build-macos.sh -v 1.0.0 --keep
-#   ./build-macos.sh -v 1.0.0 --arch x86_64
-#   ./build-macos.sh -v 1.0.0 --arch arm64
 
 APP_NAME="Vaso"
 VERSION=""
 KEEP="0"
 MAKE_ZIP="0"
-ARCH=""   # x86_64 | arm64 | auto
+ARCH="x86_64"
 PY_FILE="app.py"
 ICON_PATH="assets/vaso.icns"
 VENV_BUILD_DIR=".venv-build"
@@ -36,11 +34,11 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --arch)
-      ARCH="${2:-}"
-      shift 2
+      echo "❌ L'option --arch n'est plus supportée. Ce script build uniquement en x86_64."
+      exit 1
       ;;
     -h|--help)
-      sed -n '1,260p' "$0"
+      sed -n '1,240p' "$0"
       exit 0
       ;;
     *)
@@ -68,21 +66,6 @@ need_cmd() {
 say() {
   printf "%s\n" "$*"
 }
-
-# --- Detect arch if not provided ---
-if [[ -z "$ARCH" ]]; then
-  MACHINE="$(uname -m || true)"
-  if [[ "$MACHINE" == "arm64" ]]; then
-    ARCH="arm64"
-  else
-    ARCH="x86_64"
-  fi
-fi
-
-if [[ "$ARCH" != "x86_64" && "$ARCH" != "arm64" ]]; then
-  echo "❌ Valeur invalide pour --arch. Utilisez x86_64 ou arm64."
-  exit 1
-fi
 
 # --- Checks ---
 need_file "$PY_FILE"
