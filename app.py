@@ -1,7 +1,9 @@
 from pathlib import Path
 from datetime import datetime
 import json
+import os
 import random
+import sys
 import tkinter as tk
 import numpy as np
 from tkinter import ttk, messagebox, filedialog, scrolledtext, simpledialog
@@ -21,7 +23,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "1.0.9"
+APP_VERSION = "1.0.10"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -244,25 +246,57 @@ RANDOM_COMPLEXITY_RULES = {
 }
 
 
-def get_settings_path(base_dir: Path) -> Path:
+def get_user_settings_dir() -> Path:
+    if sys.platform == "win32":
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            return Path(appdata) / APP_NAME
+        return Path.home() / "AppData" / "Roaming" / APP_NAME
+
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / APP_NAME
+
+    xdg_config_home = os.environ.get("XDG_CONFIG_HOME")
+    if xdg_config_home:
+        return Path(xdg_config_home) / APP_NAME
+
+    return Path.home() / ".config" / APP_NAME
+
+
+def get_legacy_settings_path(base_dir: Path) -> Path:
     return base_dir / SETTINGS_FILE
 
 
+def get_settings_path(base_dir: Path) -> Path:
+    return get_user_settings_dir() / SETTINGS_FILE
+
+
 def load_settings(base_dir: Path) -> dict:
-    settings_path = get_settings_path(base_dir)
-    if not settings_path.exists():
-        return {}
+    settings_candidates = [
+        get_settings_path(base_dir),
+        get_legacy_settings_path(base_dir),
+    ]
 
-    try:
-        data = json.loads(settings_path.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
+    for settings_path in settings_candidates:
+        if not settings_path.exists():
+            continue
 
-    return data if isinstance(data, dict) else {}
+        try:
+            data = json.loads(settings_path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+
+        if isinstance(data, dict):
+            return data
+
+    return {}
 
 
 def save_settings(base_dir: Path, payload: dict) -> None:
-    settings_path = get_settings_path(base_dir)
+    settings_dir = get_user_settings_dir()
+    settings_dir.mkdir(parents=True, exist_ok=True)
+
+    settings_path = settings_dir / SETTINGS_FILE
     settings_path.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2),
         encoding="utf-8",
@@ -837,12 +871,25 @@ def get_preview_3d_render_config(mode_name: str) -> dict:
         "status_label": "Normal",
     }
 
+def configure_main_window(root: tk.Tk) -> None:
+    screen_w = max(800, int(root.winfo_screenwidth()))
+    screen_h = max(600, int(root.winfo_screenheight()))
+
+    target_w = min(1280, max(980, screen_w - 80))
+    target_h = min(760, max(620, screen_h - 100))
+
+    min_w = min(1160, target_w)
+    min_h = min(700, target_h)
+
+    root.geometry(f"{target_w}x{target_h}")
+    root.minsize(min_w, min_h)
+    root.maxsize(screen_w, screen_h)    
+
 
 def main() -> None:
     root = tk.Tk()
     root.title(f"{APP_NAME} — v{APP_VERSION}")
-    root.geometry("1280x760")
-    root.minsize(1160, 700)
+    configure_main_window(root)
 
     base_dir = Path(__file__).resolve().parent
     ico_path = base_dir / "assets" / "vaso.ico"

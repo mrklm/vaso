@@ -7,11 +7,20 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
-## [1.0.9] - 2026-03-17
+## [1.0.10] - 2026-03-19
+
+### Modifié
+
+ - Themes modifiable sous linux
+ - Taille fenetre plus petite sous Linux
+
+
+## [1.0.9] - 2026-03-18
 
 ### Modifié
 
  - Erreur de définition de "on_shading_change"
+
 
 ## [1.0.8] - 2026-03-17
 
