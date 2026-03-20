@@ -23,7 +23,7 @@ from generator import (
 )
 from exporter import export_stl
 
-APP_VERSION = "1.0.13"
+APP_VERSION = "1.0.14"
 APP_NAME = "Vaso"
 SETTINGS_FILE = "vaso_settings.json"
 
@@ -1219,11 +1219,19 @@ def main() -> None:
     profiles_table_frame = ttk.Frame(shape_form_tab, style="Vaso.TFrame")
     profiles_table_frame.grid(row=0, column=0, sticky="nw")
 
-    ttk.Label(profiles_table_frame, text="Profil", style="Vaso.TLabel").grid(row=0, column=1, sticky="w", padx=(0, 8), pady=(0, 6))
-    ttk.Label(profiles_table_frame, text="Hauteur (%)", style="Vaso.TLabel").grid(row=0, column=2, sticky="w", padx=4, pady=(0, 6))
-    ttk.Label(profiles_table_frame, text="Diamètre (mm)", style="Vaso.TLabel").grid(row=0, column=3, sticky="w", padx=4, pady=(0, 6))
-    ttk.Label(profiles_table_frame, text="Côtés", style="Vaso.TLabel").grid(row=0, column=4, sticky="w", padx=4, pady=(0, 6))
-    ttk.Label(profiles_table_frame, text="Rotation (°)", style="Vaso.TLabel").grid(row=0, column=5, sticky="w", padx=4, pady=(0, 6))
+    ttk.Label(profiles_table_frame, text="", style="Vaso.TLabel").grid(row=0, column=0, sticky="w", padx=(0, 4), pady=(0, 0))
+    ttk.Label(profiles_table_frame, text="Profil", style="Vaso.TLabel").grid(row=0, column=1, sticky="w", padx=(0, 8), pady=(0, 0))
+    ttk.Label(profiles_table_frame, text="Hauteur", style="Vaso.TLabel").grid(row=0, column=2, sticky="w", padx=4, pady=(0, 0))
+    ttk.Label(profiles_table_frame, text="Diamètre", style="Vaso.TLabel").grid(row=0, column=3, sticky="w", padx=4, pady=(0, 0))
+    ttk.Label(profiles_table_frame, text="Côtés", style="Vaso.TLabel").grid(row=0, column=4, sticky="w", padx=4, pady=(0, 0))
+    ttk.Label(profiles_table_frame, text="R", style="Vaso.TLabel").grid(row=0, column=5, sticky="w", padx=4, pady=(0, 0))
+
+    ttk.Label(profiles_table_frame, text="", style="Vaso.TLabel").grid(row=1, column=0, sticky="w", padx=(0, 4), pady=(0, 6))
+    ttk.Label(profiles_table_frame, text="", style="Vaso.TLabel").grid(row=1, column=1, sticky="w", padx=(0, 8), pady=(0, 6))
+    ttk.Label(profiles_table_frame, text="(%)", style="Vaso.TLabel").grid(row=1, column=2, sticky="w", padx=4, pady=(0, 6))
+    ttk.Label(profiles_table_frame, text="(mm)", style="Vaso.TLabel").grid(row=1, column=3, sticky="w", padx=4, pady=(0, 6))
+    ttk.Label(profiles_table_frame, text="", style="Vaso.TLabel").grid(row=1, column=4, sticky="w", padx=4, pady=(0, 6))
+    ttk.Label(profiles_table_frame, text="(°)", style="Vaso.TLabel").grid(row=1, column=5, sticky="w", padx=4, pady=(0, 6))
 
     profile_enable_checks = []
     profile_row_labels = []
@@ -1233,7 +1241,7 @@ def main() -> None:
     profile_rotation_entries = []
 
     for i in range(10):
-        row_index = i + 1
+        row_index = i + 2
 
         enable_check = ttk.Checkbutton(
             profiles_table_frame,

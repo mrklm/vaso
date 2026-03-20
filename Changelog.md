@@ -7,6 +7,13 @@ https://keepachangelog.com/fr/1.0.0/
 
 
 
+## [1.0.14] - 2026-03-20
+
+### Modifié
+
+ - Amélioration UG fenêtre paramètres généraux
+
+
 ## [1.0.13] - 2026-03-19
 
 ### Modifié
